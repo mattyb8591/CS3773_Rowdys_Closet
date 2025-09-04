@@ -1,5 +1,5 @@
 CREATE DATABASE rc_db;
-USE DATABASE rc_db;
+USE rc_db;
 
 CREATE TABLE products(
   productID int PRIMARY KEY,
@@ -17,4 +17,3 @@ INSERT INTO products(productID, productName, numInStock, price, rating) VALUES
 (5, 'Shoes', 56, 80.99, 4.8);
 
 SELECT * FROM products;
-
