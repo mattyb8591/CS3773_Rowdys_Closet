@@ -17,3 +17,8 @@ INSERT INTO products(productID, productName, numInStock, price, rating) VALUES
 (5, 'Shoes', 56, 80.99, 4.8);
 
 SELECT * FROM products;
+
+CREATE USER 'user1'@'%' IDENTIFIED BY '1234';
+GRANT ALL PRIVILEGES ON rc_db.* TO 'user1'@'%';
+FLUSH PRIVILEGES;
+
