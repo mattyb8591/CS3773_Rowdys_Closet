@@ -1,5 +1,5 @@
 from flask import Flask, redirect, url_for, request
-import mysql.connector
+from flaskext.mysql import MySQL
 
 app = Flask(__name__)
 
