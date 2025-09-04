@@ -1,4 +1,6 @@
 from flask import Flask, redirect, url_for, request
+import mysql.connector
+
 app = Flask(__name__)
 
 @app.route('/success/<name>')
