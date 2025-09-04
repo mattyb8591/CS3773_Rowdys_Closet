@@ -1,5 +1,5 @@
 CREATE DATABASE rc_db;
-USE rc_db;
+USE DATABASE rc_db;
 
 CREATE TABLE products(
   productID int PRIMARY KEY,
