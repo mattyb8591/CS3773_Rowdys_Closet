@@ -1,6 +1,3 @@
-CREATE DATABASE rc_db;
-USE rc_db;
-
 CREATE TABLE products(
   productID int PRIMARY KEY,
   productName VARCHAR(50),
@@ -15,10 +12,3 @@ INSERT INTO products(productID, productName, numInStock, price, rating) VALUES
 (3, 'T-shirt', 23, 19.99, 3.9),
 (4, 'Hoodie', 44, 25.99, 5.0),
 (5, 'Shoes', 56, 80.99, 4.8);
-
-SELECT * FROM products;
-
-CREATE USER 'user1'@'%' IDENTIFIED BY '1234';
-GRANT ALL PRIVILEGES ON rc_db.* TO 'user1'@'%';
-FLUSH PRIVILEGES;
-
