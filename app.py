@@ -38,6 +38,8 @@ def get_db_connection():
 def index():
     return render_template('index.html')
 
+
+
 # gets database data and sends it to the front end using  JSON
 @app.route('/api/products')
 def get_products():
