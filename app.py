@@ -3,11 +3,11 @@ import sqlite3
 import os
 
 '''
-sqlite3 will be used to create a self contained database system for our website
-will allow for python to interact with our "database"
-
-flask will be used for python to communicate with javascript
+# for MySQL
+import mysql.connector
+from mysql.connector import Error
 '''
+
 
 app = Flask(__name__)
 
@@ -16,6 +16,22 @@ def get_db_connection():
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     return conn
+
+'''
+def get_db_connection():
+    try:
+        conn = mysql.connector.connect(
+            host="",       # MySQL server
+            user="",   # MySQL username
+            password="",  # MySQL password
+            database=""   # Database name
+        )
+        return conn
+    except Error as e:
+        print(f"Error: {e}")
+        return None
+
+'''
 
 # renders the HTML template when visiting the URL
 @app.route('/')
@@ -43,6 +59,32 @@ def get_products():
     # returns JSON response with the "products" data
     return jsonify({'products': products_list})
 
+'''
+@app.route('/api/products')
+def get_products():
+    conn = get_db_connection()
+    if conn is None:
+        return jsonify({'error': 'Database connection failed'}), 500
+
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM products")
+    products = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    products_list = []
+    for product in products:
+        products_list.append({
+            'productID': product['productID'],
+            'productName': product['productName'],
+            'numInStock': product['numInStock'],
+            'price': float(product['price']),
+            'rating': float(product['rating'])
+        })
+
+    return jsonify({'products': products_list})
+    '''
+
 def init_db():
     conn = sqlite3.connect('database.db')
     with open('schema.sql', 'r') as f:
@@ -50,6 +92,21 @@ def init_db():
     conn.commit()
     conn.close()
 
+'''
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    with open('schema.sql', 'r') as f:
+        sql_commands = f.read().split(';')
+        for command in sql_commands:
+            if command.strip():
+                cursor.execute(command)
+    conn.commit()
+    cursor.close()
+    conn.close()
+'''
+
+# REMOVE THIS WHEN USING MYSQL
 if __name__ == '__main__':
     # Initialize database if it doesn't exist
     if not os.path.exists('database.db'):
