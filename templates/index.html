@@ -12,11 +12,20 @@
         <div class="nav-bar">
             <ul>
                 <li><a href="index.html">Home</a></li>
-                <li><a href=""
+                <li><a href="login.html">Login</a></li>
+                <li><a href="cart.html">Checkout</a></li>
+            </ul>
+        </div>
+    </header>
     <div class="container">
         <h1>Rowdy's Closet</h1>
         <button id="fetchProducts">Load Products</button>
         <div id="productsTable"></div>
+        <!-- Imma add a button here to go to signin.html page for now -->
+        <a href="{{ url_for('signin') }}">
+        <button id="goToSignIn">Sign In</button>
+        <!-- ^^^Button^^^ -->
+    </a>
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
