@@ -33,12 +33,30 @@ def get_db_connection():
 
 '''
 
-# renders the HTML template when visiting the URL
+# renders the login page when visiting the URL
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/signin')
+def signin():
+    return render_template('signin.html')
 
+@app.route('/home')
+def signin():
+    return render_template('home.html')
+
+@app.route('/profile')
+def signin():
+    return render_template('profile.html')
+
+@app.route('/item')
+def signin():
+    return render_template('item.html')
+
+@app.route('/cart')
+def signin():
+    return render_template('cart.html')
 
 # gets database data and sends it to the front end using  JSON
 @app.route('/api/products')
