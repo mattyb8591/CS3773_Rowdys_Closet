@@ -89,9 +89,4 @@ def init_db():
 
 # REMOVE THIS WHEN USING MYSQL
 if __name__ == '__main__':
-    # Initialize database if it doesn't exist
-    if not os.path.exists('database.db'):
-        import init_db
-        init_db()
-    
     app.run(debug=True)

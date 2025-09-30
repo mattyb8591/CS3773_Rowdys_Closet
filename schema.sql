@@ -1,3 +1,5 @@
+USE rowdys_closet_db;
+
 CREATE TABLE products(
   productID int PRIMARY KEY,
   productName VARCHAR(50),
