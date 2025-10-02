@@ -69,43 +69,6 @@ def cart():
 
 # gets database data and sends it to the front end using  JSON
 
-@app.route('/api/products')
-def get_products():
-    conn = get_db_connection()
-    if conn is None:
-        return jsonify({'error': 'Database connection failed'}), 500
-
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM products")
-    products = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    products_list = []
-    for product in products:
-        products_list.append({
-            'productID': product['productID'],
-            'productName': product['productName'],
-            'numInStock': product['numInStock'],
-            'price': float(product['price']),
-            'rating': float(product['rating'])
-        })
-
-    return jsonify({'products': products_list})
-    
-
-def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    with open('schema.sql', 'r') as f:
-        sql_commands = f.read().split(';')
-        for command in sql_commands:
-            if command.strip():
-                cursor.execute(command)
-    conn.commit()
-    cursor.close()
-    conn.close()
-
 
 # REMOVE THIS WHEN USING MYSQL
 if __name__ == '__main__':
