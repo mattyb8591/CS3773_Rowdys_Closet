@@ -45,8 +45,7 @@ def signin():
     #if they do not exists store information in db
     connection = get_db_connection()
     cursor = connection.cursor()
-    cursor.execute('INSERT INTO accounts ()')
-
+    cursor.execute()
 
     #redirect the user to the home page
 
