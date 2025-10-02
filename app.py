@@ -32,19 +32,19 @@ def signin():
     return render_template('signin.html')
 
 @app.route('/home')
-def signin():
+def home():
     return render_template('home.html')
 
 @app.route('/profile')
-def signin():
+def profile():
     return render_template('profile.html')
 
 @app.route('/item')
-def signin():
+def item():
     return render_template('item.html')
 
 @app.route('/cart')
-def signin():
+def cart():
     return render_template('cart.html')
 
 # gets database data and sends it to the front end using  JSON
