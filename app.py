@@ -41,14 +41,14 @@ def signin():
     password = request.form.get('password')
     
     #check if user already exists in the database
-    
+
     #if they do not exists store information in db
     connection = get_db_connection()
     cursor = connection.cursor()
     cursor.execute(
         "INSERT INTO accounts(userName, passwordHash) VALUES (%s, %s)"
         , username, password)
-
+    connection.commit()
     #redirect the user to the login page after they sign up
 
     return render_template('signup.html')
