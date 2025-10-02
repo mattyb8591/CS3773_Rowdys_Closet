@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import os
 
 # for MySQL
@@ -34,6 +34,22 @@ def signup():
 @app.route('/login')
 def login():
     return render_template('login.html')
+
+@app.route('/signup', methods=['POST'])
+def signin():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    
+    #check if user already exists in the database
+
+    #if they do not exists store information in db
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute()
+
+    #redirect the user to the home page
+
+    return render_template('signup.html')
 
 @app.route('/home')
 def home():
