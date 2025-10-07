@@ -5,8 +5,14 @@ import os
 import mysql.connector
 from mysql.connector import Error
 
-
 app = Flask(__name__)
+
+app.register_blueprint(signup_bp, url_prefix="/signup")
+app.register_blueprint(login_bp, url_prefix="/login")
+app.register_blueprint(home_bp, url_prefix="/home")
+app.register_blueprint(cart_bp, url_prefix="/cart")
+app.register_blueprint(cart_bp, url_prefix="/item")
+app.register_blueprint(cart_bp, url_prefix="/profile")
 
 def get_db_connection():
     try:
@@ -20,6 +26,7 @@ def get_db_connection():
     except Error as e:
         print(f"Error: {e}")
         return None
+
 
 
 # renders the login page when visiting the URL
@@ -70,3 +77,6 @@ def cart():
     return render_template('cart.html')
 
 # gets database data and sends it to the front end using  JSON
+
+if __name__ == "__main__":
+    app.run(debug=True)
