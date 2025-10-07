@@ -70,8 +70,3 @@ def cart():
     return render_template('cart.html')
 
 # gets database data and sends it to the front end using  JSON
-
-
-# REMOVE THIS WHEN USING MYSQL
-if __name__ == '__main__':
-    app.run(debug=True)
