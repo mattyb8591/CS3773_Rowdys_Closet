@@ -1,5 +1,12 @@
 from flask import Flask, render_template, jsonify, request
 import os
+from routes.signup import signup_bp
+from routes.login import login_bp
+from routes.home import home_bp
+from routes.cart import cart_bp
+from routes.item import item_bp
+from routes.profile import profile_bp
+
 
 # for MySQL
 import mysql.connector
@@ -11,8 +18,8 @@ app.register_blueprint(signup_bp, url_prefix="/signup")
 app.register_blueprint(login_bp, url_prefix="/login")
 app.register_blueprint(home_bp, url_prefix="/home")
 app.register_blueprint(cart_bp, url_prefix="/cart")
-app.register_blueprint(cart_bp, url_prefix="/item")
-app.register_blueprint(cart_bp, url_prefix="/profile")
+app.register_blueprint(item_bp, url_prefix="/item")
+app.register_blueprint(profile_bp, url_prefix="/profile")
 
 def get_db_connection():
     try:
@@ -44,20 +51,6 @@ def login():
 
 @app.route('/signup', methods=['POST'])
 def signin():
-    username = request.form.get('username')
-    password = request.form.get('password')
-    
-    #check if user already exists in the database
-
-    #if they do not exists store information in db
-    connection = get_db_connection()
-    cursor = connection.cursor()
-    cursor.execute(
-        "INSERT INTO accounts(userName, passwordHash) VALUES (%s, %s)"
-        , username, password)
-    connection.commit()
-    #redirect the user to the login page after they sign up
-
     return render_template('signup.html')
 
 @app.route('/home')

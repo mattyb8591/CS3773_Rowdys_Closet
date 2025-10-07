@@ -11,6 +11,7 @@ CREATE TABLE products(
 CREATE TABLE accounts(
   accountID int AUTO_INCREMENT PRIMARY KEY,
   userName VARCHAR(50),
+  email VARCHAR(50) UNIQUE,
   passwordHash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

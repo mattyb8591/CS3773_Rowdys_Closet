@@ -7,18 +7,16 @@ from mysql.connector import Error
 
 login_bp = Blueprint("login", __name__)
 
-def login():
-
-     conn = get_db_connection()
+def login(): 
+    conn = get_db_connection()
     if request.method == 'POST':
         username=request.form['username']
         password=request.form['password']
     cursor=conn.cursor()
 
-    query="SELECT * FROM users Where username=%s AND password=%s"
-    cursor.execute(query, (username, password))n
+    query="SELECT * FROM accounts Where userName=%s AND passwordHash=%s"
+    cursor.execute(query, (username, password))
     if cursor.fetchall() is None:
         return jsonify({'error': 'Login failed'})
     else:
         return jsonify({'success':'Login successful'})
-        
