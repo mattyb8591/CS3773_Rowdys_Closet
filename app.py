@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Blueprint
 import os
 from routes.signup import signup_bp
 from routes.login import login_bp
