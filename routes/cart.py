@@ -4,4 +4,4 @@ from werkzeug.security import check_password_hash
 from app import get_db_connection
 
 
-cart_bp = Blueprint("cart", __name__)
+cart_bp = Blueprint("cart", __name__, template_folder="routes")

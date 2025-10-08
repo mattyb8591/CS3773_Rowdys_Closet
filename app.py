@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, Blueprint
+from flask import Flask, render_template, jsonify, request, Blueprint, url_for, redirect
 import os
 from routes.signup import signup_bp
 from routes.login import login_bp
@@ -34,40 +34,6 @@ def get_db_connection():
         print(f"Error: {e}")
         return None
 
-
-
-# renders the login page when visiting the URL
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/signup')
-def signup():
-    return render_template('signup.html')
-
-@app.route('/login')
-def login():
-    return render_template('login.html')
-
-@app.route('/signup', methods=['POST'])
-def signin():
-    return render_template('signup.html')
-
-@app.route('/home')
-def home():
-    return render_template('home.html')
-
-@app.route('/profile')
-def profile():
-    return render_template('profile.html')
-
-@app.route('/item')
-def item():
-    return render_template('item.html')
-
-@app.route('/cart')
-def cart():
-    return render_template('cart.html')
 
 # gets database data and sends it to the front end using  JSON
 
