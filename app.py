@@ -15,6 +15,8 @@ from routes.profile import profile_bp
 
 # TEST COMMENT
 
+# deployment script hooks.json changed
+
 # for MySQL
 import mysql.connector
 from mysql.connector import Error
