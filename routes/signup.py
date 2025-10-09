@@ -3,7 +3,10 @@ import os
 from werkzeug.security import check_password_hash
 from app import get_db_connection
 
-signup_bp = Blueprint("signup", __name__)
+signup_bp = Blueprint("signup", __name__, template_folder="routes")
+
+def generate_password_has():
+    return
 
 @signup_bp.route("/", methods=["POST"])
 def signup():

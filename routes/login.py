@@ -6,8 +6,7 @@ import mysql.connector
 from mysql.connector import Error
 from app import get_db_connection
 
-login_bp = Blueprint("login", __name__)
-
+login_bp = Blueprint("login", __name__, template_folder="routes")
 
 
 def login(): 
