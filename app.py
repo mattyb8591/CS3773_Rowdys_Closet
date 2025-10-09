@@ -13,6 +13,8 @@ from routes.profile import profile_bp
 
 # THIS NEW COMMENT IS THE LAST TEST FOR THE WEBHOOK!
 
+# TEST COMMENT
+
 # for MySQL
 import mysql.connector
 from mysql.connector import Error
