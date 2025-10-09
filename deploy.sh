@@ -8,7 +8,7 @@ cd "$APP_DIR"
 source venv/bin/activate
 
 # Pull latest code from GitHub
-git fetch origin main
+git pull origin main
 git reset --hard origin/main
 
 # Install dependencies if requirements.txt exists
