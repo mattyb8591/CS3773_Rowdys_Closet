@@ -11,11 +11,17 @@ from routes.profile import profile_bp
 # for MySQL
 import mysql.connector
 from mysql.connector import Error
+def create_app():
+    app = Flask(__name__)
+    return app
 
-app = Flask(__name__)
+app = create_app()
+app.register_blueprint(login_bp, url_prefix="/login")
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 app.register_blueprint(signup_bp, url_prefix="/signup")
-app.register_blueprint(login_bp, url_prefix="/login")
 app.register_blueprint(home_bp, url_prefix="/home")
 app.register_blueprint(cart_bp, url_prefix="/cart")
 app.register_blueprint(item_bp, url_prefix="/item")
@@ -34,8 +40,6 @@ def get_db_connection():
         print(f"Error: {e}")
         return None
 
-
 # gets database data and sends it to the front end using  JSON
 
-if __name__ == "__main__":
-    app.run(debug=True)
+

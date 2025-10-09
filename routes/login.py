@@ -4,12 +4,15 @@ from werkzeug.security import check_password_hash
 # for MySQL
 import mysql.connector
 from mysql.connector import Error
-from app import get_db_connection
 
 login_bp = Blueprint("login", __name__, template_folder="routes")
 
+login_bp.route("/login", methods = ['GET', 'POST'])
+def index():
+    return render_template("index.html")
 
 def login(): 
+    from app import get_db_connection
     conn = get_db_connection()
     if request.method == 'POST':
         username=request.form['username']
