@@ -7,15 +7,7 @@ from routes.cart import cart_bp
 from routes.item import item_bp
 from routes.profile import profile_bp
 
-# THIS COMMENT IS A TEST FOR THE WEBHOOK DEPLOYMENT SCRIPT
-
-# THIS NEW COMMENT IS ANOTHER TEST FOR THE WEBHOOK DEPLOYMENT SCRIPT PLEASE WORK!!!!
-
-# THIS NEW COMMENT IS THE LAST TEST FOR THE WEBHOOK!
-
-# TEST COMMENT
-
-# deployment script hooks.json changed
+# DELETED OLD WEBHOOK TESTING NEW ONE
 
 # for MySQL
 import mysql.connector
