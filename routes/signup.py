@@ -1,20 +1,22 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, redirect
+from flask import render_template, jsonify, Blueprint, redirect, request, json
 import os
 from werkzeug.security import check_password_hash
-#from app import get_db_connection
 
-signup_bp = Blueprint("signup", __name__, template_folder="routes")
+signup_bp = Blueprint("signup", __name__, template_folder="templates", static_folder="css")
 
 def generate_password_has():
     return
 
-@signup_bp.route("/", methods=["POST"])
+@signup_bp.route("/", methods=['POST', 'GET'])
 def signup():
+    '''
     from app import get_db_connection
-    data = request.json
-    username = data.get("username")
-    email = data.get("email")
-    password = data.get("password")
+
+    if(request.method == 'POST'):
+        data = request.get_json()
+        username = data.get("username")
+        email = data.get("email")
+        password = data.get("password")
 
     if not username or not email or not password:
         return jsonify({"error": "All fields required"}), 400
@@ -35,5 +37,7 @@ def signup():
     )
     conn.commit()
     conn.close()
+    '''
+    return render_template("signup.html")
+    # return jsonify({"message": "User created successfully"}), 201
 
-    return jsonify({"message": "User created successfully"}), 201, render_template("templates/index.html")

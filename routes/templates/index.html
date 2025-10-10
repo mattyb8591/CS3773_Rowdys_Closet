@@ -1,29 +1,23 @@
+<!-- !!!WILL BE THE LOGIN PAGE!!! -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rowdy's Closet - Create Account</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/login_signup.css">
+    <title>Rowdy's Closet</title>
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login_signup.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <style>
-        .login-panel {
-            max-width: 650px;
-            margin: 0 auto;
-        }
-        .auth-wrapper {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-    </style>
+
 </head>
 <body>
     <header>
         <div class="nav-bar">
             <div class="nav-inner">
+                 <!-- added image and wrapper to place image on the left -->
                  <div class="nav-left">
-                     <img src="..\img\utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
+                     <img src="\img\utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
                  </div>
                  <div class="nav-links">
                      <li><a href="home.html">Home</a></li>
@@ -35,37 +29,36 @@
     </header>
     <div class="container auth-container">
         <div class="auth-wrapper">
+            <!-- left: login form -->
             <section class="login-panel">
-                <h2><strong>Rowdy Closet Create Account</strong></h2>
-                <form id="signupForm">
+                <h2><strong>Rowdy Closet Login</strong></h2>
+                <form id="loginForm">
                     <label for="username"><strong>Username</strong></label>
-                    <input type="text" id="username" name="username" placeholder="Choose a username" required>
-
-                    <label for="email"><strong>Email Address</strong></label>
-                    <input type="text" id="email" name="email" placeholder="Enter your email" required>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
 
                     <label for="password"><strong>Password</strong></label>
-                    <input type="password" id="password" name="password" placeholder="Create a password" required>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
 
-                    <label for="confirmPassword"><strong>Confirm Password</strong></label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
-
-                    <button type="submit" class="btn-login">Create Account</button>
+                    <button type="submit" class="btn-login">Login</button>
                 </form>
 
-                <p id="response"></p>
-
-                <p class="signup-line">Already have an account? <a href="index.html">Login here</a></p>
+                <p class="signup-line">Don't have an account? <a href="signup.html">Sign up here</a></p>
 
                 <p class="aux-links">
-                    <a href="#" class="forgot">Need Help?</a>
+                    <a href="#" class="forgot">Forgot your Password?</a>
                     <span class="sep">|</span>
                     <a href="contact.html" class="contact">Contact Us</a>
                 </p>
             </section>
+
+            <!-- right: big UTSA logo image -->
+            <aside class="image-panel">
+                <img src="\img\utsa_full_roadrunners_2008-pres^a 1.png" alt="UTSA Logo">
+            </aside>
         </div>
     </div>
+    <!-- <script src="{{ url_for('static', filename='script.js') }}"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="signup.js"></script>
+
 </body>
 </html>

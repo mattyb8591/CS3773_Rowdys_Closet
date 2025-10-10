@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, url_for, redirect
+from flask import Flask, render_template, url_for, redirect
 import os
 from routes.signup import signup_bp
 from routes.login import login_bp
@@ -7,26 +7,19 @@ from routes.cart import cart_bp
 from routes.item import item_bp
 from routes.profile import profile_bp
 
-# DELETED OLD WEBHOOK TESTING NEW ONE
-
 # for MySQL
 import mysql.connector
 from mysql.connector import Error
-def create_app():
-    app = Flask(__name__)
-    return app
 
-app = create_app()
+app = Flask(__name__)
+
 app.register_blueprint(login_bp, url_prefix="/login")
-@app.route("/")
-def index():
-    return render_template("index.html")
-
 app.register_blueprint(signup_bp, url_prefix="/signup")
 app.register_blueprint(home_bp, url_prefix="/home")
 app.register_blueprint(cart_bp, url_prefix="/cart")
 app.register_blueprint(item_bp, url_prefix="/item")
 app.register_blueprint(profile_bp, url_prefix="/profile")
+
 
 def get_db_connection():
     try:
@@ -40,7 +33,13 @@ def get_db_connection():
     except Error as e:
         print(f"Error: {e}")
         return None
-
 # gets database data and sends it to the front end using  JSON
+
+@app.route("/")
+def test():
+    return "<h1>Test</h1>"
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
