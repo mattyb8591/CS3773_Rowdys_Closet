@@ -20,7 +20,7 @@ def signup():
         password = data.get("password")
 
     '''
-    #browser throws error that fields are empty
+    #browser throws error that fields are empty find out how to populate data
     if not username or not email or not password:
         return jsonify({"error": "All fields required"}), 400
 
