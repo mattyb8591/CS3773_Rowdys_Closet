@@ -9,8 +9,9 @@ def generate_password_has():
 
 @signup_bp.route("/", methods=['POST', 'GET'])
 def signup():
-    '''
+
     from app import get_db_connection
+    conn = get_db_connection()
 
     if(request.method == 'POST'):
         data = request.get_json()
@@ -18,10 +19,10 @@ def signup():
         email = data.get("email")
         password = data.get("password")
 
+    '''
+    #browser throws error that fields are empty
     if not username or not email or not password:
         return jsonify({"error": "All fields required"}), 400
-    
-    conn = get_db_connection()
 
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM accounts WHERE email=%s", (email,))
@@ -29,6 +30,7 @@ def signup():
 
     if existing:
         return jsonify({"error": "User already exists"}), 400
+        
     
     password_hash = generate_password_has(password)
     cursor.execute(

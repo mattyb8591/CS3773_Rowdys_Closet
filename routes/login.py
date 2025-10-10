@@ -5,7 +5,7 @@ from werkzeug.security import check_password_hash
 import mysql.connector
 from mysql.connector import Error
 
-login_bp = Blueprint("login", __name__, template_folder="routes")
+login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
 login_bp.route("/login", methods = ['GET', 'POST'])
 def index():
