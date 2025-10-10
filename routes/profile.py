@@ -6,4 +6,4 @@ profile_bp = Blueprint("profile", __name__, template_folder="routes")
 
 @profile_bp.route("/")
 def index():
-    return render_template("html/profile.html")
+    return render_template("templates/profile.html")

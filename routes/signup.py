@@ -10,6 +10,7 @@ def generate_password_has():
 
 @signup_bp.route("/", methods=["POST"])
 def signup():
+    from app import get_db_connection
     data = request.json
     username = data.get("username")
     email = data.get("email")
@@ -35,4 +36,4 @@ def signup():
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "User created successfully"}), 201
+    return jsonify({"message": "User created successfully"}), 201, render_template("templates/index.html")
