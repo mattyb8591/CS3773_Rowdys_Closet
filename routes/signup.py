@@ -2,7 +2,7 @@ from flask import render_template, jsonify, Blueprint, redirect, request, json
 import os
 from werkzeug.security import check_password_hash
 
-signup_bp = Blueprint("signup", __name__, template_folder="templates", static_folder="css")
+signup_bp = Blueprint("signup", __name__, template_folder="templates", static_folder="static")
 
 def generate_password_has():
     return
