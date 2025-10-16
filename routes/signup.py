@@ -19,7 +19,7 @@ def signup():
         email = data.get("email")
         password = data.get("password")
 
-    '''
+    
     #browser throws error that fields are empty find out how to populate data
     if not username or not email or not password:
         return jsonify({"error": "All fields required"}), 400
@@ -39,7 +39,7 @@ def signup():
     )
     conn.commit()
     conn.close()
-    '''
+    
     return render_template("signup.html")
     # return jsonify({"message": "User created successfully"}), 201
 
