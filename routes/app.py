@@ -34,6 +34,10 @@ def get_db_connection():
         print(f"Error: {e}")
         return None
 # gets database data and sends it to the front end using  JSON
+@app.route("/")
+def index():
+    return "Testing"
+
 
 if __name__ == '__main__':
     app.run(debug=True)
