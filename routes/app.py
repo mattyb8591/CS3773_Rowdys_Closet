@@ -13,8 +13,8 @@ from mysql.connector import Error
 
 app = Flask(__name__)
 
-app.register_blueprint(login_bp, url_prefix="/login")
-app.register_blueprint(signup_bp, url_prefix="/")
+app.register_blueprint(login_bp, url_prefix="/")
+app.register_blueprint(signup_bp, url_prefix="/signup")
 app.register_blueprint(home_bp, url_prefix="/home")
 app.register_blueprint(cart_bp, url_prefix="/cart")
 app.register_blueprint(item_bp, url_prefix="/item")
@@ -34,10 +34,6 @@ def get_db_connection():
         print(f"Error: {e}")
         return None
 # gets database data and sends it to the front end using  JSON
-
-@app.route("/")
-def test():
-    return "<h1>Test</h1>"
 
 if __name__ == '__main__':
     app.run(debug=True)
