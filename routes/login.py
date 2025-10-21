@@ -2,8 +2,6 @@ from flask import Flask, render_template, jsonify, request, Blueprint, redirect
 import os
 from werkzeug.security import check_password_hash
 # for MySQL
-import mysql.connector
-from mysql.connector import Error
 
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
