@@ -36,7 +36,7 @@ def create_app():
     # Attach it to the app (so blueprints can access it via current_app)
     app.get_db_connection = get_db_connection
 
-    @app.route("/")
+    @app.route("/test")
     def index():
         return "Testing"
 
