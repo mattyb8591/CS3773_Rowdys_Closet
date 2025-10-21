@@ -3,26 +3,28 @@ from werkzeug.security import check_password_hash
 
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
-@login_bp.route("/login", methods=['GET', 'POST'])
+@login_bp.route("/", methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return render_template("index.html")
+        return render_template("login.html")
 
-    username = request.form['username']
-    password = request.form['password']
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    if not username or not password:
+        flash("Please fill in all fields.", "error")
+        return render_template("login.html")
 
     db = current_app.get_db_connection()
     cursor = db.cursor(dictionary=True)
-
-    query = "SELECT * FROM accounts WHERE userName = %s"
-    cursor.execute(query, (username,))
+    cursor.execute("SELECT * FROM accounts WHERE userName = %s", (username,))
     user = cursor.fetchone()
     cursor.close()
+    db.close()
 
-    if user is None:
-        return jsonify({'error': 'Invalid username or password'})
+    if not user or not check_password_hash(user['passwordHash'], password):
+        flash("Invalid username or password.", "error")
+        return render_template("login.html")
 
-    if not check_password_hash(user['passwordHash'], password):
-        return jsonify({'error': 'Invalid username or password'})
-
-    return jsonify({'success': 'Login successful', 'user': user['userName']})
+    flash("Login successful!", "success")
+    return redirect(url_for("home.home"))

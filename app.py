@@ -14,7 +14,7 @@ def create_app():
     app.secret_key = "dev_secret_key" 
 
     app.register_blueprint(signup_bp, url_prefix="/signup")
-    app.register_blueprint(login_bp, url_prefix="/login")
+    app.register_blueprint(login_bp, url_prefix="/")
     app.register_blueprint(home_bp, url_prefix="/home")
     app.register_blueprint(cart_bp, url_prefix="/cart")
     app.register_blueprint(item_bp, url_prefix="/item")
