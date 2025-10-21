@@ -12,7 +12,7 @@ def index():
     return render_template("index.html")
 
 def login(): 
-    from routes.app import get_db_connection
+    from app import get_db_connection
     conn = get_db_connection()
     if request.method == 'POST':
         username=request.form['username']

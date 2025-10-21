@@ -1,11 +1,11 @@
 from flask import Flask, render_template, url_for, redirect
 import os
-from signup import signup_bp
-from login import login_bp
-from home import home_bp
-from cart import cart_bp
-from item import item_bp
-from profile import profile_bp
+from routes.signup import signup_bp
+from routes.login import login_bp
+from routes.home import home_bp
+from routes.cart import cart_bp
+from routes.item import item_bp
+from routes.profile import profile_bp
 
 # for MySQL
 import mysql.connector
