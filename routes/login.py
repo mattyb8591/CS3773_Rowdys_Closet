@@ -13,7 +13,7 @@ def login():
 
     if not username or not password:
         flash("Please fill in all fields.", "error")
-        return render_template("login.html")
+        return render_template("index.html")
 
     db = current_app.get_db_connection()
     cursor = db.cursor(dictionary=True)
@@ -24,7 +24,7 @@ def login():
 
     if not user or not check_password_hash(user['passwordHash'], password):
         flash("Invalid username or password.", "error")
-        return render_template("login.html")
+        return render_template("index.html")
 
     flash("Login successful!", "success")
     return redirect(url_for("home.home"))
