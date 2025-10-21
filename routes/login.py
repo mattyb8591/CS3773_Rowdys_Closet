@@ -6,7 +6,7 @@ login_bp = Blueprint("login", __name__, template_folder="templates", static_fold
 @login_bp.route("/", methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
-        return render_template("login.html")
+        return render_template("index.html")
 
     username = request.form.get('username')
     password = request.form.get('password')
