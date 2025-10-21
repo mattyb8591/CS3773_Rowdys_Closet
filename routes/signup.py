@@ -1,49 +1,43 @@
-from flask import render_template, jsonify, Blueprint, redirect, request, json, url_for
-import os
-from werkzeug.security import check_password_hash
+from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash
+from werkzeug.security import generate_password_hash
 
 signup_bp = Blueprint("signup", __name__, template_folder="templates", static_folder="static")
 
-def generate_password_has():
-    return
-
-@signup_bp.route("/", methods=['POST', 'GET'])
+@signup_bp.route("/", methods=['GET', 'POST'])
 def signup():
+    if request.method == 'GET':
+        return render_template("signup.html")
 
-    username = ''
-    email = ''
-    password = ''
+    username = request.form.get('username')
+    email = request.form.get('email')
+    password = request.form.get('password')
 
-    from app import get_db_connection
-    conn = get_db_connection()
-
-    if request.method == 'POST':
-        
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        
-    '''
-    #browser throws error that fields are empty find out how to populate data
     if not username or not email or not password:
-        return jsonify({"error": "All fields required"}), 400
+        flash("All fields are required.", "error")
+        return render_template("signup.html")
 
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM accounts WHERE email=%s", (email,))
+    db = current_app.get_db_connection()
+    cursor = db.cursor(dictionary=True)
+
+    # Check if email already exists
+    cursor.execute("SELECT * FROM accounts WHERE email = %s", (email,))
     existing = cursor.fetchone()
-
     if existing:
-        return jsonify({"error": "User already exists"}), 400
-        
-    
-    password_hash = generate_password_has(password)
+        cursor.close()
+        flash("Email already registered.", "error")
+        return render_template("signup.html")
+
+    # Hash password and insert new user
+    password_hash = generate_password_hash(password)
     cursor.execute(
-        "INSERT INTO accounts(userName, email, passwordHash) VALUES (%s, %s, %s)", 
+        "INSERT INTO accounts (userName, email, passwordHash) VALUES (%s, %s, %s)",
         (username, email, password_hash)
     )
-    conn.commit()
-    conn.close()
-    '''
-    return render_template("signup.html")
-    # return jsonify({"message": "User created successfully"}), 201
+    db.commit()
+    cursor.close()
+    db.close()
+
+    flash("Account created successfully! Please log in.", "success")
+    return redirect(url_for("login.login"))
+
 

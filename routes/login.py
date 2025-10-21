@@ -1,25 +1,28 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, redirect
-import os
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 from werkzeug.security import check_password_hash
-# for MySQL
 
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
-login_bp.route("/login", methods = ['GET', 'POST'])
-def index():
-    return render_template("index.html")
+@login_bp.route("/login", methods=['GET', 'POST'])
+def login():
+    if request.method == 'GET':
+        return render_template("index.html")
 
-def login(): 
-    from app import get_db_connection
-    conn = get_db_connection()
-    if request.method == 'POST':
-        username=request.form['username']
-        password=request.form['password']
-    cursor=conn.cursor()
+    username = request.form['username']
+    password = request.form['password']
 
-    query="SELECT * FROM accounts Where userName=%s AND passwordHash=%s"
-    cursor.execute(query, (username, password))
-    if cursor.fetchall() is None:
-        return jsonify({'error': 'Login failed'})
-    else:
-        return jsonify({'success':'Login successful'})
+    db = current_app.get_db_connection()
+    cursor = db.cursor(dictionary=True)
+
+    query = "SELECT * FROM accounts WHERE userName = %s"
+    cursor.execute(query, (username,))
+    user = cursor.fetchone()
+    cursor.close()
+
+    if user is None:
+        return jsonify({'error': 'Invalid username or password'})
+
+    if not check_password_hash(user['passwordHash'], password):
+        return jsonify({'error': 'Invalid username or password'})
+
+    return jsonify({'success': 'Login successful', 'user': user['userName']})
