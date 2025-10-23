@@ -43,21 +43,21 @@
 
                 <form id="signupForm">
                     <label for="username"><strong>Username</strong></label>
-                    <input type="text" id="username" name="username" placeholder="Choose a username" required>
+                    <input type="text" id="username" name="username" placeholder="Choose a username">
                     
                     <label for="email"><strong>Email Address</strong></label>
-                    <input type="text" id="email" name="email" placeholder="Enter your email" required>
+                    <input type="text" id="email" name="email" placeholder="Enter your email">
                     
                     <label for="password"><strong>Password</strong></label>
-                    <input type="password" id="password" name="password" placeholder="Create a password" required minlength="6">
+                    <input type="password" id="password" name="password" placeholder="Create a password">
                     
                     <label for="confirmPassword"><strong>Confirm Password</strong></label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password" required>
+                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Re-enter your password">
                     
+                    <div id="feedback" style="color: red;"></div>
+
                     <button type="submit" class="btn-login">Create Account</button>
                 </form>
-
-                <div id="message"></div>
 
                 <p class="signup-line">
                     Already have an account? 
