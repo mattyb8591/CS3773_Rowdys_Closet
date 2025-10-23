@@ -5,5 +5,5 @@ from werkzeug.security import check_password_hash
 home_bp = Blueprint("home", __name__, template_folder="templates", static_folder="static")
 
 @home_bp.route("/", methods=["GET"])
-def index():
+def home():
     return render_template("home.html")
