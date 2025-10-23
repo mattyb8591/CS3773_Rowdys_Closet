@@ -75,9 +75,7 @@ CREATE TABLE IF NOT EXISTS carts(
   FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 
-
-
-
+SELECT * FROM users;
 
 
 

@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
 @login_bp.route("/", methods=['GET', 'POST'])
-def login():
+def index():
     if request.method == 'GET':
         return render_template("index.html")
 
@@ -17,7 +17,7 @@ def login():
 
     db = current_app.get_db_connection()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM accounts WHERE userName = %s", (username,))
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
     user = cursor.fetchone()
     cursor.close()
     db.close()

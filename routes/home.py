@@ -1,7 +1,9 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, redirect
+from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app
 import os
 from werkzeug.security import check_password_hash
-#from app import get_db_connection
 
+home_bp = Blueprint("home", __name__, template_folder="templates", static_folder="static")
 
-home_bp = Blueprint("home", __name__, template_folder="routes")
+@home_bp.route("/", methods=["GET"])
+def index():
+    return render_template("home.html")
