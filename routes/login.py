@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
 @login_bp.route("/", methods=['GET', 'POST'])
-def login():
+def index():
     username =""
     password =""
     if request.method == 'POST':
