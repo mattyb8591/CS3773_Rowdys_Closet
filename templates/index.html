@@ -20,9 +20,9 @@
                      <img src="../static/img/utsa_full_roadrunners_2008-pres^a 1.png" class="nav-logo" alt="Rowdy's Closet logo">
                  </div>
                  <div class="nav-links">
-                     <li><a href="home.html">Home</a></li>
-                     <li><a href="item.html">Shop</a></li>
-                     <li><a href="cart.html">Checkout</a></li>
+                    <li><a href="{{ url_for('home.index') }}">Home</a></li>
+                    <li><a href="{{ url_for('item.index') }}">Shop</a></li>
+                    <li><a href="{{ url_for('cart.index') }}">Checkout</a></li>
                  </div>
             </div>
         </div>
@@ -42,7 +42,7 @@
                     <button type="submit" class="btn-login">Login</button>
                 </form>
 
-                <p class="signup-line">Don't have an account? <a href="signup">Sign up here</a></p>
+                <p class="signup-line">Don't have an account? <a href="{{ url_for('signup.index') }}">Sign up here</a></p>
 
                 <p class="aux-links">
                     <a href="#" class="forgot">Forgot your Password?</a>
