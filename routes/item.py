@@ -6,4 +6,5 @@ item_bp = Blueprint("item", __name__, template_folder="templates", static_folder
 
 @item_bp.route("/", methods=["GET"])
 def index():
+    
     return render_template("item.html")

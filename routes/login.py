@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
 @login_bp.route("/", methods=['GET', 'POST'])
-def index():
+def login():
     username =""
     password =""
     if request.method == 'POST':
@@ -24,5 +24,5 @@ def index():
     if user is None:
         return render_template("index.html")
     else:
-        return redirect(url_for("home.home"))
+        return redirect(url_for("home.index"))
 
