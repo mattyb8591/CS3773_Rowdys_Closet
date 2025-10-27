@@ -1,0 +1,226 @@
+/* Base variables */
+:root {
+    --brand-bg: #0C2340;
+    --brand-accent: #007bff;
+    --muted: #6c757d;
+    --page-max: 1200px;
+    --gutter: 16px;
+}
+
+/* page container tweaks (works with existing .nav-inner/.nav-bar) */
+main {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: 0 16px 16px;
+    box-sizing: border-box;
+}
+
+/* HERO */
+.hero {
+    /* full-bleed hero: span entire viewport width and sit flush under header */
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    overflow: hidden;
+    /* remove top rounding so top of image touches header */
+    border-radius: 0;
+    background: linear-gradient(180deg, rgba(12,35,64,0.06), rgba(255,255,255,0.02));
+}
+
+/* hero image: responsive and covers area */
+.hero img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    display: block;
+}
+
+/* small CTA styling if used */
+.cta {
+    display: inline-block;
+    background: var(--brand-accent);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* FEATURED / CAROUSEL */
+.featured {
+    padding: 8px 0 36px;
+    background-color: #ffffff00;
+}
+
+.featured h2 {
+    text-align: center;
+    margin: 0 0 12px;
+    font-size: 1.6rem;
+    color: #111;
+}
+
+/* center and limit carousel width */
+#featuredCarousel {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 6px;
+}
+
+#featuredCarousel .carousel-item {
+    min-height: 500px; /* consistent panel height */
+    position: relative; /* preserve Bootstrap positioning */
+}
+
+#featuredCarousel .carousel-item.active,
+#featuredCarousel .carousel-item.carousel-item-start,
+#featuredCarousel .carousel-item.carousel-item-end {
+    display: flex;              /* only for visible / transitioning slides */
+    align-items: center;
+    justify-content: center;
+}
+
+/* Images: show whole image, constrained to panel */
+#featuredCarousel .carousel-item img,
+#featuredCarousel .carousel-img {
+    /* max-height: 100%; */
+    max-width: 100%; 
+    height: 500px;
+    object-fit: contain; /* no cropping */
+    margin: 0 auto;
+    border-radius: 6px;
+}
+
+/* Make carousel images have consistent height and crop cleanly */
+.carousel-img {
+    height: 500px;
+    object-fit: cover;
+    border-radius: 6px;
+    align-items: center;        /* vertical center image inside panel */
+    justify-content: center;  
+}
+
+/* Slight overlay for captions for readability */
+.carousel-caption {
+    background-color: #0c234031;
+    padding: 10px 12px;
+    border-radius: 6px;
+    left: 12px;
+    right: 12px;
+    bottom: 16px;
+}
+
+/* Caption text */
+.carousel-caption h5 {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.carousel-caption p {
+    margin: 0 0 8px;
+    color: #f1f1f1;
+}
+
+/* Small CTA inside caption */
+.carousel-caption .btn {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+}
+
+/* Make indicators more visible on light images */
+.carousel-indicators [data-bs-target] {
+    background-color: rgba(0,0,0,0.45);
+}
+
+/* Accessibility: ensure controls are visible on light backgrounds */
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45));
+}
+
+/* RESPONSIVE TWEAKS */
+@media (max-width: 768px) {
+    .hero img {
+        height: 220px;
+    }
+    .carousel-img {
+        height: 220px;
+    }
+    .nav-links {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 420px) {
+    .hero img,
+    .carousel-img {
+        height: 160px;
+    }
+    .carousel-caption {
+        font-size: 0.9rem;
+        padding: 8px;
+        bottom: 10px;
+    }
+}
+
+/* shirts scroller */
+/* generic product section (applies to Shirts, Hoodies, Jackets, Headwear, Bags) */
+.product-section,
+.shirts-section { padding: 1.5rem 0; }
+
+.product-section.container,
+.shirts-section.container {
+    background: transparent !important;
+}
+
+/* scroller-wrapper */
+.scroller-wrapper { position: relative; }
+.product-scroller {
+	display: flex;
+	gap: 1rem;
+	overflow-x: auto;
+	scroll-behavior: smooth;
+	padding: 1rem 0.5rem;
+	-webkit-overflow-scrolling: touch;
+}
+.product-card {
+	min-width: 218px;
+	max-width: 220px;
+	flex: 0 0 auto;
+	border: 1px solid #e6e6e6;
+	border-radius: .5rem;
+	padding: .5rem;
+	background: #fff;
+	text-align: center;
+}
+.product-card img { width: auto; height: 200px; object-fit: cover; border-radius: .25rem; }
+.product-name { font-size: .95rem; margin: .5rem 0 .25rem; }
+.product-price { font-weight: 600; color: #1a1a1a; margin-bottom: .5rem; }
+.scroller-btn {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 10;
+	background: rgba(255,255,255,0.9);
+	border: 1px solid #ddd;
+	width: 36px;
+	height: 36px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+}
+.scroller-btn:disabled { opacity: .4; pointer-events: none; }
+.scroller-prev { left: -10px; }
+.scroller-next { right: -10px; }
+@media (max-width: 576px) {
+	.product-card { min-width: 160px; max-width: 180px; }
+	.product-card img { height: 130px; }
+}
