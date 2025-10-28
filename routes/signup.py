@@ -17,8 +17,6 @@ def signup():
     email = ''
     password = ''
 
-
-
     from app import get_db_connection
     conn = get_db_connection()
 

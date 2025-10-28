@@ -21,6 +21,6 @@ def index():
 
     #get all products from the db
     if request.method == "GET":
-        cursor.execute("SELECT * FROM PRODUCTS")
+        cursor.execute("SELECT * FROM products")
         products = cursor.fetchall()
         return jsonify({'products': products}), render_template("home.html")
