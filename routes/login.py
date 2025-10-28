@@ -24,5 +24,5 @@ def login():
     if user is None:
         return render_template("index.html")
     else:
-        return redirect(url_for("home.index"))
+        return render_template("home.html")
 
