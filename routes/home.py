@@ -8,20 +8,19 @@ home_bp = Blueprint("home", __name__, template_folder="templates", static_folder
 @home_bp.route("/", methods=["GET", "POST"])
 def index():
 
-    db = current_app.get_db_connection()
+    #db connection
+    from app import get_db_connection
+    db = get_db_connection()
 
     if db is None:
         print("Database connection failed")  # Debug log
         return jsonify({"error": "Database connection failed"}), 500
 
+    #create cursor
     cursor = db.cursor()
+
     #get all products from the db
-    cursor.execute("SELECT * FROM PRODUCTS")
-    #store the products
-    products = cursor.fetchall()
-
-    #send the products to the frontend
-
-    #query the db for all products
-
-    return render_template("home.html")
+    if request.method == "GET":
+        cursor.execute("SELECT * FROM PRODUCTS")
+        products = cursor.fetchall()
+        return jsonify({'products': products}), render_template("home.html")

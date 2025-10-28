@@ -38,11 +38,11 @@ def signup():
     
     password_hash = generate_password_has(password)
     cursor.execute(
-        "INSERT INTO users(userName, email, passwordHash) VALUES (%s, %s, %s)", 
+        "INSERT INTO users(username, email, password) VALUES (%s, %s, %s)", 
         (username, email, password_hash)
     )
     cursor.execute(
-        "SELECT user_id FROM users WHERE userName=%s", (username)
+        "SELECT user_id FROM users WHERE username=%s", (username)
     )
     existing = cursor.fetchone()
     cursor.execute(
