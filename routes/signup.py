@@ -10,24 +10,29 @@ def generate_password_has():
 @signup_bp.route("/", methods=['POST', 'GET'])
 def signup():
 
+    if request.method == 'GET':
+        return render_template("signup.html")
+
     username = ''
     email = ''
     password = ''
+
+
 
     from app import get_db_connection
     conn = get_db_connection()
 
     if request.method == 'POST':
-        
+
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
-        
+        return render_template("signup.html")
     
     #browser throws error that fields are empty find out how to populate data
     if not username or not email or not password:
         return jsonify({"error": "All fields required"}), 400
-
+    
     cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
     existing = cursor.fetchone()
@@ -52,6 +57,7 @@ def signup():
     conn.commit()
     conn.close()
     
-    return render_template("signup.html")
+    print("Account created successfully! Please log in.", "success")
+    return redirect(url_for("login.login"))
     # return jsonify({"message": "User created successfully"}), 201
 
