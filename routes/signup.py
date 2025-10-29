@@ -65,6 +65,20 @@ def signup():
             "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
             (username, email, password_hash)
         )
+
+        print("Matching user to customer")
+        cursor.execute(
+            "SELECT user_id FROM users WHERE username = %s AND password = %s", (username, password)
+        
+        )
+
+        userid = cursor.fetchone()
+        print(userid)
+        print("Adding user to customers")
+        cursor.execute("INSERT INTO customers (user_id) VALUES (%s)", (userid["user_id"],)
+    
+        )
+
         db.commit()
         print("User inserted successfully!")  # Debug log
         

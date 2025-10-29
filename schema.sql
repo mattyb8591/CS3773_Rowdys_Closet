@@ -77,5 +77,20 @@ CREATE TABLE IF NOT EXISTS carts(
 
 SELECT * FROM users;
 
+ALTER TABLE products
+ADD type varchar(25);
+
+ALTER TABLE products
+ADD description varchar(500);
+
+SELECT * FROM customers;
+
+SELECT user_id FROM users WHERE username = 'mattyb';
+
+
+
+
+
+
 
 
