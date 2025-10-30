@@ -87,6 +87,14 @@ SELECT * FROM customers;
 
 SELECT user_id FROM users WHERE username = 'mattyb';
 
+ALTER TABLE products
+ADD img_file_path varchar(500);
+
+ALTER TABLE users
+ADD img_profile_path varchar(500);
+
+ALTER TABLE products
+MODIFY stock INT NOT NULL DEFAULT 0;
 
 
 

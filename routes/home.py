@@ -17,10 +17,15 @@ def index():
         return jsonify({"error": "Database connection failed"}), 500
 
     #create cursor
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
 
-    #get all products from the db
-    if request.method == "GET":
-        cursor.execute("SELECT * FROM products")
-        products = cursor.fetchall()
-        return jsonify({'products': products}), render_template("home.html")
+    #check database if product is currently sold out
+    cursor.execute("SELECT * FROM products WHERE stock < 1")
+
+    soldout = cursor.fetchall()
+    print(soldout)
+
+
+    #if product is sold out send a request to js to alter the stock status of the product
+
+    return render_template("home.html")
