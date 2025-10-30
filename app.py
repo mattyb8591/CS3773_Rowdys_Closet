@@ -1,4 +1,4 @@
-from flask import Flask, g, jsonify
+from flask import Flask, g, jsonify, session
 import mysql.connector
 from mysql.connector import Error
 
@@ -11,6 +11,7 @@ from routes.cart import cart_bp
 from routes.profile import profile_bp
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)
 
 app.register_blueprint(signup_bp, url_prefix="/signup")
 app.register_blueprint(login_bp, url_prefix="/")

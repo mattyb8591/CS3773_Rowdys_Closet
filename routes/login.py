@@ -1,28 +1,33 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
-from werkzeug.security import check_password_hash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, session
 
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
 @login_bp.route("/", methods=['GET', 'POST'])
 def login():
-    username =""
-    password =""
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    if "user_id" in session:
+        return redirect(url_for("home.index"))
+
+    if request.method == 'GET':
+        return render_template("index.html")
+
+    username = request.form.get('username')
+    password = request.form.get('password')
 
     if not username or not password:
-        return render_template("index.html")
+        return jsonify({"success": False, "message": "Please fill in all fields."}), 400
 
     db = current_app.get_db_connection()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username,password))
+    cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
     user = cursor.fetchone()
     cursor.close()
     db.close()
 
     if user is None:
-        return render_template("index.html")
-    else:
-        return render_template("home.html")
+        return jsonify({"success": False, "message": "Invalid username or password."}), 401
 
+    session["user_id"] = user["user_id"]
+    session["username"] = user["username"]
+    session["email"] = user["email"]
+
+    return redirect(url_for("home.index"))
