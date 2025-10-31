@@ -43,7 +43,7 @@ def close_db(error):
 
 @app.route("/")
 def index():
-    return "Welcome to Rowdy’s Closet!"
+    return "Welcome to Rowdy's Closet!"
 
 # test the database conneciton
 @app.route("/test-db")
