@@ -1,6 +1,7 @@
 from flask import Flask, g, jsonify, session
 import mysql.connector
 from mysql.connector import Error
+import os
 
 # Import all Blueprints
 from routes.signup import signup_bp
