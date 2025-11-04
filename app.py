@@ -1,6 +1,7 @@
 from flask import Flask, g, jsonify, session
 import mysql.connector
 from mysql.connector import Error
+import os
 
 # Import all Blueprints
 from routes.signup import signup_bp
@@ -43,7 +44,7 @@ def close_db(error):
 
 @app.route("/")
 def index():
-    return "Welcome to Rowdy’s Closet!"
+    return "Welcome to Rowdy's Closet!"
 
 # test the database conneciton
 @app.route("/test-db")
