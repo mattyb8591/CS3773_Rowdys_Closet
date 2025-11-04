@@ -83,7 +83,7 @@ ADD type varchar(25);
 ALTER TABLE products
 ADD description varchar(500);
 
-SELECT * FROM customers;
+SELECT * FROM addresses;
 
 SELECT user_id FROM users WHERE username = 'mattyb';
 
@@ -96,9 +96,6 @@ ADD img_profile_path varchar(500);
 ALTER TABLE products
 MODIFY stock INT NOT NULL DEFAULT 0;
 
-
-
-
-
-
+ALTER TABLE addresses
+ADD street_name INT NOT NULL;
 
