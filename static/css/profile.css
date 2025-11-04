@@ -1,0 +1,61 @@
+body{
+    padding-top: 120px;
+}
+
+.profile-container {
+  margin: 0 auto;
+  display: flex;
+}
+
+.profile-picture img{
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid black;
+    display: block;
+    margin: 0 auto;
+}
+
+.profile-picture{
+    padding-bottom: 40px;
+}
+
+.welcome-message {
+  font-size: 24px;
+  text-align:center;
+  margin: 0 auto;
+}
+
+.profile-column{
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.logout-section{
+    margin-top: auto;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding-top: 100px;
+}
+
+label{
+    font-weight:bold;
+    display:block;
+    margin-bottom: 2px;
+}
+
+p{
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+select{
+    font-size: 16px;
+    padding: 5px;
+}
