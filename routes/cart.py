@@ -15,7 +15,7 @@ def index():
         return jsonify({"error": "Database connection failed"}), 500
     
     if "user_login" not in session:
-        return redirect(url_for("login.index"))
+        return redirect(url_for("login.login"))
 
     #create cursor
     cursor = db.cursor()
