@@ -4,8 +4,9 @@ profile_bp = Blueprint("profile", __name__, template_folder="templates", static_
 
 @profile_bp.route("/", methods=["GET"])
 def index():
+
     if "user_id" not in session:
-        return redirect(url_for("login.index"))
+        return redirect(url_for("login.login"))
 
     user_id = session["user_id"]
 
@@ -20,7 +21,8 @@ def index():
         cursor.close()
         db.close()
         session.clear()
-        return redirect(url_for("login.index"))
+        return redirect(url_for("login.login"))
+
 
     address = None
     if user.get("address_id"):
@@ -32,8 +34,8 @@ def index():
 
     return render_template("profile.html", user=user, address=address)
 
-
 @profile_bp.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login.index"))
+
+    return redirect(url_for("login.login"))

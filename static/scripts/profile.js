@@ -1,6 +1,14 @@
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    const response = await fetch("/profile/data");
+    const response = await fetch("/profile/", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ user, address }),
+      });
+
     const result = await response.json();
 
     if (!result.success) {

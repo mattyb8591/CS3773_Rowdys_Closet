@@ -26,9 +26,9 @@
                      <img src="../static/img/utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
                  </div>
                  <div class="nav-links">
-                     <li><a href="home.html">Home</a></li>
-                     <li><a href="profile.html">Profile</a></li>
-                     <li><a href="cart.html">Checkout</a></li>
+                     <li><a href="{{ url_for('home.index') }}">Home</a></li>
+                     <li><a href="{{ url_for('profile.index') }}">Profile</a></li>
+                     <li><a href="{{ url_for('cart.index') }}">Checkout</a></li>
                  </div>
             </div>
         </div>
@@ -38,22 +38,22 @@
         
         <div class="profile-picture">
         <img src="../static/img/utsa_full_roadrunners_2008-pres^a 1.png" alt="Profile Picture">
-        <h3 class="welcome-message">Welcome, {{username}}</h3>
+        <h3 class="welcome-message">Welcome, {{user.username}}</h3>
         </div>
         
         
         <!-- Left Column -->
         <div class="profile-column">
             <label>Email:</label>
-            <p id="email">{{email}}</p>
+            <p>{{user.email}}</p>
             <label>Phone number:</label>
-            <p id="phone_number">{{phone}}</p>
+            <p>{{user.phone}}</p>
         </div>
 
         <!-- Right Column -->
         <div class="profile-column">
             <label>Address:</label>
-            <p id="address">{{address}}</p>
+            <p>{{address.street_number}} {{address.street_name}} {{address.city}} {{address.state_abrev}} {{address.zip_code}}</p>
             <label for="accountType">Account type:</label>
             <select id="accountType" name="accountType">
             <option id="student" value="student">Student</option>
@@ -64,7 +64,8 @@
     </div>
     <div class="logout-section">
         <form class="logout" id="logout" action="/logout" method="POST">
-            <button type="submit">Log out</button>
+            <a href="{{ url_for('profile.logout') }}" class="btn btn-danger">Log out</a>
         </form>
     </div>
 </body>
+
