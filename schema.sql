@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS carts(
 
 SELECT * FROM users;
 
+SELECT * FROM customers;
+
 ALTER TABLE products
 ADD type varchar(25);
 
@@ -97,5 +99,7 @@ ALTER TABLE products
 MODIFY stock INT NOT NULL DEFAULT 0;
 
 ALTER TABLE addresses
-ADD street_name INT NOT NULL;
+MODIFY COLUMN street_name VARCHAR(100);
 
+ALTER TABLE users
+ADD account_type varchar(50);
