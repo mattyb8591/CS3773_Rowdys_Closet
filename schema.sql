@@ -103,3 +103,9 @@ MODIFY COLUMN street_name VARCHAR(100);
 
 ALTER TABLE users
 ADD account_type varchar(50);
+
+ALTER TABLE products
+MODIFY COLUMN size VARCHAR(10);
+
+ALTER TABLE products
+MODIFY COLUMN name VARCHAR(100);
