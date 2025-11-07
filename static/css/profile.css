@@ -7,6 +7,21 @@ body{
   display: flex;
 }
 
+.btn-container {
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center;
+}
+
+.order-container {
+    background-color: white !important;
+    min-width: 500px;
+    min-height: 500px;
+    border-radius: 20px;
+    margin: 20px;
+    padding: 20px;
+}
+
 .profile-picture img{
     width: 150px;
     height: 150px;
@@ -77,4 +92,8 @@ select {
     display: block;
     width: 100%;
     margin-bottom: 15px;
+}
+
+.title {
+    text-align: center;
 }

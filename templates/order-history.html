@@ -33,29 +33,19 @@
             </div>
         </div>
     </header>
-        
-        
-    <div class="profile-picture">
-    <img src="../static/img/utsa_full_roadrunners_2008-pres^a 1.png" alt="Logo Picture">
-    <h3 class="welcome-message">Welcome, {{user.username}}</h3>
-    </div>
     
-    <div class="profile-info">
-        <label>Email:</label>
-        <p>{{user.email}}</p>
-        <label>Phone number:</label>
-        <p>{{user.phone_number}}</p>
-        <label>Address:</label>
-        <p>{{address.street_number}} {{address.street_name}}</p>
-        <p>{{address.city}}, {{address.state_abrev}} {{address.zip_code}}</p>   
-        <label>Account type:</label>
-        <p>{{user.account_type}}</p>   
+    <div class="title">
+        <h2><strong>Order History</strong></h2>
+    </div>
+
+    <div class="order-container">
+        <p>hello</p>
     </div>
 
     <div class="btn-container">
-        <a href="{{ url_for('profile.edit') }}" class="btn">Edit Profile</a>
-        <a href="{{ url_for('profile.edit') }}" class="btn">Order History (WIP)</a>
-        <a href="{{ url_for('profile.logout') }}" class="btn btn-danger">Log out</a>
-    </div>  
+        <a href="{{ url_for('profile.index') }}" class="btn">Back to Profile</a>
+    </div> 
 </body>
+
+
 
