@@ -145,6 +145,94 @@ main {
     filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45));
 }
 
+/* Search bar (nav) styling */
+.nav-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative; /* for suggestions dropdown */
+    width: clamp(180px, 36vw, 420px);
+    min-width: 160px;
+    background: #fff;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #e6e6e6;
+    box-shadow: 0 1px 4px rgba(12,34,64,0.06);
+    transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+/* subtle highlight when focused */
+.nav-search:focus-within {
+    border-color: var(--brand-accent);
+    box-shadow: 0 6px 20px rgba(0,123,255,0.08);
+}
+
+/* input inside search */
+.nav-search input[type="search"] {
+    flex: 1 1 auto;
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 0.95rem;
+    padding: 6px 4px;
+    color: #111;
+}
+
+/* search button (icon) */
+.nav-search button {
+    background: transparent;
+    border: none;
+    padding: 6px;
+    margin: 0;
+    font-size: 1.05rem;
+    cursor: pointer;
+    color: var(--brand-bg);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.nav-search button:focus { outline: 2px solid rgba(0,123,255,0.18); }
+
+/* suggestions dropdown */
+.nav-search ul[role="listbox"] {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #e6e6e6;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(12,34,64,0.08);
+    max-height: 260px;
+    overflow: auto;
+    z-index: 60;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* hide with the hidden attribute */
+.nav-search ul[hidden] { display: none; }
+
+/* suggestion item */
+.nav-search li[role="option"] {
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+    color: #222;
+}
+.nav-search li[role="option"]:hover,
+.nav-search li[role="option"].active {
+    background: var(--brand-bg);
+    color: #fff;
+}
+
 /* RESPONSIVE TWEAKS */
 @media (max-width: 768px) {
     .hero img {
