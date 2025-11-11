@@ -1,15 +1,30 @@
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, starting product load...');
-    loadProducts();
-    setTimeout(initializeScrollers, 100);
+
+    // read sort from URL so the choice persists if user bookmarks or refreshes
+    const params = new URLSearchParams(window.location.search);
+    currentSort = params.get('sort') || 'default';
 
     const sortSelect = document.getElementById('sortSelect');
     if (sortSelect) {
+        sortSelect.value = currentSort;
+        // when user changes selection, update currentSort, update URL (no reload), and re-render
         sortSelect.addEventListener('change', (e) => {
             currentSort = e.target.value || 'default';
+
+            // update query param without reloading the page
+            const p = new URLSearchParams(window.location.search);
+            if (currentSort === 'default') p.delete('sort'); else p.set('sort', currentSort);
+            const newUrl = window.location.pathname + (p.toString() ? '?' + p.toString() : '');
+            history.replaceState(null, '', newUrl);
+
+            // call renderProducts() directly (no load/reload)
             renderProducts();
         });
     }
+
+    loadProducts();
+    setTimeout(initializeScrollers, 100);
 });
 
 let productsCache = {};    // cached API data keyed by type
