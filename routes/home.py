@@ -5,27 +5,91 @@ from werkzeug.security import check_password_hash
 
 home_bp = Blueprint("home", __name__, template_folder="templates", static_folder="static")
 
-@home_bp.route("/", methods=["GET", "POST"])
-def index():
-
-    #db connection
+def load_products():
     from app import get_db_connection
     db = get_db_connection()
-
+    
     if db is None:
-        print("Database connection failed")  # Debug log
-        return jsonify({"error": "Database connection failed"}), 500
-
-    #create cursor
+        return {}
+    
     cursor = db.cursor(dictionary=True)
+    
+    cursor.execute("""
+        SELECT product_id, name, price, stock, type, img_file_path, size, description
+        FROM products 
+        ORDER BY product_id
+    """)
+    
+    all_products = cursor.fetchall()
+    cursor.close()
+    db.close()
+    
+    print(f"DEBUG: Raw products from DB: {len(all_products)}")
+    
+    # Use dictionary with product name as key to automatically handle duplicates
+    products_dict = {}
+    
+    for product in all_products:
+        product_name = product['name']
+        
+        # If this product name is already in our dictionary, skip it
+        if product_name in products_dict:
+            print(f"DEBUG: DUPLICATE FOUND - Skipping: {product_name}")
+            continue
+            
+        products_dict[product_name] = {
+            'product_id': product['product_id'],
+            'name': product['name'],
+            'price': product['price'],
+            'type': product['type'],
+            'img_file_path': product['img_file_path'],
+            'description': product['description'],
+            'stock': product['stock']
+        }
+        print(f"DEBUG: ADDED: {product_name}")
+    
+    unique_products_list = list(products_dict.values())
+    print(f"DEBUG: After duplicate removal: {len(unique_products_list)} products")
+    
+    products_by_type = {
+        'T-Shirts': [],
+        'Hoodies': [], 
+        'Jackets': [],
+        'Headwear': [],
+        'Bags': []
+    }
+    
+    for product in unique_products_list:
+        product_type = product['type']
+        if product_type in products_by_type:
+            products_by_type[product_type].append(product)
+    
+    #  debug output
+    for product_type, products in products_by_type.items():
+        product_names = [p['name'] for p in products]
+        print(f"DEBUG: {product_type} ({len(products)}): {product_names}")
+    
+    return products_by_type
 
-    #check database if product is currently sold out
-    cursor.execute("SELECT * FROM products WHERE stock < 1")
+@home_bp.route("/", methods=["GET"])
+def index():
+    products_by_type = load_products()
+    return render_template("home.html", products_by_type=products_by_type)
 
-    soldout = cursor.fetchall()
-    print(soldout)
+@home_bp.route("/api/products")
+def get_products_api():
+    products_by_type = load_products()
+    return jsonify(products_by_type)
 
-
-    #if product is sold out send a request to js to alter the stock status of the product
-
-    return render_template("home.html")
+@home_bp.route("/debug-products")
+def debug_products():
+    products_by_type = load_products()
+    
+    debug_info = {}
+    for product_type, products in products_by_type.items():
+        debug_info[product_type] = {
+            'count': len(products),
+            'products': [p['name'] for p in products]
+        }
+    
+    return jsonify(debug_info)

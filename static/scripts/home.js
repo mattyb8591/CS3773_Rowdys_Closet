@@ -1,64 +1,105 @@
 document.addEventListener('DOMContentLoaded', function () {
-	// Simple small script to set current year
-	const yearEl = document.getElementById('year');
-	if (yearEl) yearEl.textContent = new Date().getFullYear();
-
-	// Initialize all product scrollers on the page
-	document.querySelectorAll('.product-scroller').forEach(scroller => {
-		const wrapper = scroller.closest('.scroller-wrapper');
-		if (!wrapper) return;
-		const prevBtn = wrapper.querySelector('.scroller-prev');
-		const nextBtn = wrapper.querySelector('.scroller-next');
-
-		function updateButtons() {
-			if (prevBtn) prevBtn.disabled = scroller.scrollLeft <= 0;
-			if (nextBtn) nextBtn.disabled = Math.ceil(scroller.scrollLeft + scroller.clientWidth) >= scroller.scrollWidth;
-		}
-
-		function scrollByCard(direction) {
-			const card = scroller.querySelector('.product-card');
-			if (!card) return;
-			let gap = 16;
-			try {
-				const cs = window.getComputedStyle(scroller);
-				gap = parseFloat(cs.columnGap || cs.gap) || gap;
-			} catch (e) { /* ignore */ }
-			const scrollAmount = (card.getBoundingClientRect().width + gap) * direction;
-			scroller.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-		}
-
-		if (prevBtn) prevBtn.addEventListener('click', () => scrollByCard(-1));
-		if (nextBtn) nextBtn.addEventListener('click', () => scrollByCard(1));
-
-		scroller.addEventListener('scroll', updateButtons);
-		window.addEventListener('resize', updateButtons);
-		updateButtons();
-
-		// Mouse drag-to-scroll for this scroller
-		let isDown = false, startX = 0, scrollLeft = 0;
-		scroller.addEventListener('mousedown', (e) => {
-			isDown = true;
-			scroller.classList.add('dragging');
-			startX = e.pageX - scroller.offsetLeft;
-			scrollLeft = scroller.scrollLeft;
-		});
-		scroller.addEventListener('mouseleave', () => { isDown = false; scroller.classList.remove('dragging'); });
-		scroller.addEventListener('mouseup', () => { isDown = false; scroller.classList.remove('dragging'); });
-		scroller.addEventListener('mousemove', (e) => {
-			if (!isDown) return;
-			e.preventDefault();
-			const x = e.pageX - scroller.offsetLeft;
-			const walk = (x - startX) * 1;
-			scroller.scrollLeft = scrollLeft - walk;
-		});
-	});
-
-	// Add-to-cart handlers (delegated/static)
-	document.querySelectorAll('.add-to-cart').forEach(btn => {
-		btn.addEventListener('click', (e) => {
-			const id = btn.getAttribute('data-product-id');
-			console.log('Add to cart clicked for product', id);
-			// TODO: call your add-to-cart endpoint or form here
-		});
-	});
+    console.log('DOM loaded, starting product load...');
+    loadProducts();
+    setTimeout(initializeScrollers, 100);
 });
+
+function loadProducts() {
+    console.log('Fetching products from API...');
+    
+    // Fetch products from the API endpoint
+    fetch('/home/api/products')
+        .then(response => {
+            console.log('API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(productsByType => {
+            console.log('Products received from API (organized by type):', productsByType);
+            
+            // Display products in their repsective sections
+            displayProductsByType(productsByType);
+        })
+        .catch(error => {
+            console.error('Error loading products:', error);
+            document.querySelectorAll('.product-scroller').forEach(scroller => {
+                scroller.innerHTML = '<div class="no-products">Error loading products. Please refresh the page.</div>';
+            });
+        });
+}
+
+function displayProductsByType(productsByType) {
+    console.log('Displaying products by type:', productsByType);
+    
+    // For each product type, display products in the corresponding section
+    Object.keys(productsByType).forEach(productType => {
+        const sectionId = getSectionId(productType);
+        const scroller = document.getElementById(sectionId);
+        
+        console.log(`Looking for section: ${productType} -> ${sectionId}`, scroller);
+        
+        if (scroller) {
+            const products = productsByType[productType];
+            console.log(`Found ${products.length} products for ${productType}:`, products.map(p => p.name));
+            
+            if (products.length === 0) {
+                scroller.innerHTML = '<div class="no-products">No products available</div>';
+                return;
+            }
+
+            scroller.innerHTML = '';
+
+            products.forEach(product => {
+                const productCard = createProductCard(product);
+                scroller.appendChild(productCard);
+            });
+        } else {
+            console.warn(`No scroller found for product type: ${productType}`);
+        }
+    });
+}
+
+function getSectionId(productType) {
+    const typeToId = {
+        'T-Shirts': 'shirtsScroller',
+        'Hoodies': 'hoodiesScroller',
+        'Jackets': 'jacketsScroller',
+        'Headwear': 'headwearScroller',
+        'Bags': 'bagsScroller'
+    };
+    return typeToId[productType];
+}
+
+function createProductCard(product) {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    
+    const formattedPrice = parseFloat(product.price).toFixed(2);
+    const isOutOfStock = product.stock <= 0;
+    
+    const stockStatus = isOutOfStock ? 
+        '<span class="out-of-stock-tag">Out of Stock</span>' : 
+        `<button class="btn btn-sm btn-primary add-to-cart" data-product-id="${product.product_id}">Add to Cart</button>`;
+    
+    let imagePath = product.img_file_path;
+    if (imagePath && !imagePath.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+        imagePath += '.png';
+    }
+    
+    const imageHtml = imagePath ? 
+        `<img src="${imagePath}" alt="${product.name}" onerror="this.style.display='none'">` :
+        '<div class="no-image-placeholder"></div>';
+    
+    card.innerHTML = `
+        <div class="product-image-container">
+            ${imageHtml}
+        </div>
+        <div class="product-name">${product.name}</div>
+        <div class="product-price">$${formattedPrice}</div>
+        ${stockStatus}
+    `;
+    
+    return card;
+}

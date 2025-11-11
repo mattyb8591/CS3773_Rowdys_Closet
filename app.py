@@ -3,7 +3,6 @@ import mysql.connector
 from mysql.connector import Error
 import os
 
-# Import all Blueprints
 from routes.signup import signup_bp
 from routes.login import login_bp
 from routes.home import home_bp
@@ -46,7 +45,6 @@ def close_db(error):
 def index():
     return "Welcome to Rowdy's Closet!"
 
-# test the database conneciton
 @app.route("/test-db")
 def test_db():
     try:
@@ -54,11 +52,9 @@ def test_db():
         if conn and conn.is_connected():
             cursor = conn.cursor(dictionary=True)
             
-            # Check if users table exists (not accounts)
             cursor.execute("SHOW TABLES LIKE 'users'")
             table_exists = cursor.fetchone()
             
-            # Get all users from users table
             users = []
             if table_exists:
                 cursor.execute("SELECT user_id, username, email FROM users")
@@ -84,6 +80,44 @@ def test_db():
             "status": "error",
             "message": f"Database error: {str(e)}"
         }), 500
+
+@app.route("/test-products")
+def test_products():
+    try:
+        conn = get_db_connection()
+        if conn and conn.is_connected():
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute("SHOW TABLES LIKE 'products'")
+            table_exists = cursor.fetchone()
+            
+            products = []
+            if table_exists:
+                cursor.execute("SELECT * FROM products")
+                products = cursor.fetchall()
+            
+            cursor.close()
+            conn.close()
+            
+            return jsonify({
+                "status": "success",
+                "table_exists": bool(table_exists),
+                "products": products,
+                "product_count": len(products)
+            })
+        else:
+            return jsonify({
+                "status": "error", 
+                "message": "Database connection failed"
+            }), 500
+            
+    except Error as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Database error: {str(e)}"
+        }), 500
     
+    
+
 if __name__ == "__main__":
     app.run(debug=True)
