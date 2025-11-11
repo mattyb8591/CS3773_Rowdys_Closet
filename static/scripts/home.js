@@ -2,7 +2,18 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, starting product load...');
     loadProducts();
     setTimeout(initializeScrollers, 100);
+
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value || 'default';
+            renderProducts();
+        });
+    }
 });
+
+let productsCache = {};    // cached API data keyed by type
+let currentSort = 'default';
 
 function loadProducts() {
     console.log('Fetching products from API...');
@@ -19,8 +30,9 @@ function loadProducts() {
         .then(productsByType => {
             console.log('Products received from API (organized by type):', productsByType);
             
-            // Display products in their repsective sections
-            displayProductsByType(productsByType);
+            // cache API data for client-side sorting/rendering
+            productsCache = productsByType || {};
+            renderProducts();
         })
         .catch(error => {
             console.error('Error loading products:', error);
@@ -28,6 +40,43 @@ function loadProducts() {
                 scroller.innerHTML = '<div class="no-products">Error loading products. Please refresh the page.</div>';
             });
         });
+}
+
+function renderProducts() {
+    const sorted = sortProductsDeep(productsCache, currentSort);
+    displayProductsByType(sorted);
+}
+
+function sortProductsDeep(productsByType, sortKey) {
+    const out = {};
+    Object.keys(productsByType || {}).forEach(type => {
+        const arr = (productsByType[type] || []).slice(); // copy so we don't mutate cache
+        out[type] = sortArray(arr, sortKey);
+    });
+    return out;
+}
+
+function sortArray(arr, sortKey) {
+    if (!sortKey || sortKey === 'default') return arr;
+    const multiplier = sortKey.endsWith('-asc') ? 1 : -1;
+
+    if (sortKey.startsWith('price')) {
+        return arr.sort((a, b) => {
+            const pa = parseFloat(a.price) || 0;
+            const pb = parseFloat(b.price) || 0;
+            return (pa - pb) * multiplier;
+        });
+    }
+
+    if (sortKey.startsWith('availability')) {
+        return arr.sort((a, b) => {
+            const sa = Number(a.stock) || 0;
+            const sb = Number(b.stock) || 0;
+            return (sa - sb) * multiplier;
+        });
+    }
+
+    return arr;
 }
 
 function displayProductsByType(productsByType) {
