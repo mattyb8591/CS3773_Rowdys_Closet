@@ -14,7 +14,7 @@ def index():
         print("Database connection failed")  # Debug log
         return jsonify({"error": "Database connection failed"}), 500
     
-    if "user_login" not in session:
+    if "user_id" not in session:
         return redirect(url_for("login.login"))
 
     #create cursor
@@ -33,7 +33,7 @@ def index():
     WHERE cart_products.cart_id = %s
 
     """
-    cursor.execute(query, (cart_id,))
+    cursor.execute(query,(cart_id,))
     
     user_cart_items = cursor.fetchall()
     print(user_cart_items) #Debug log
