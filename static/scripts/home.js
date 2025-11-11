@@ -1,25 +1,21 @@
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, starting product load...');
 
-    // read sort from URL so the choice persists if user bookmarks or refreshes
+    // read sort from URL so reloads keep the choice
     const params = new URLSearchParams(window.location.search);
     currentSort = params.get('sort') || 'default';
 
+    // reflect currentSort in the UI
     const sortSelect = document.getElementById('sortSelect');
     if (sortSelect) {
         sortSelect.value = currentSort;
-        // when user changes selection, update currentSort, update URL (no reload), and re-render
+        // when user changes the selection, update the "sort" query param and reload
         sortSelect.addEventListener('change', (e) => {
-            currentSort = e.target.value || 'default';
-
-            // update query param without reloading the page
+            const newSort = e.target.value || 'default';
             const p = new URLSearchParams(window.location.search);
-            if (currentSort === 'default') p.delete('sort'); else p.set('sort', currentSort);
-            const newUrl = window.location.pathname + (p.toString() ? '?' + p.toString() : '');
-            history.replaceState(null, '', newUrl);
-
-            // call renderProducts() directly (no load/reload)
-            renderProducts();
+            if (newSort === 'default') p.delete('sort'); else p.set('sort', newSort);
+            // reload page with new query string (will re-run loadProducts and apply sort)
+            window.location.search = p.toString();
         });
     }
 
