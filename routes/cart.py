@@ -39,7 +39,6 @@ def index():
     print(user_cart_items) #Debug log
     if not user_cart_items :
         print("Cart is empty")  # Debug log
-        return jsonify({"success": False, "message": "Your cart is empty."}), 401 
     cursor.close()
     db.close()
     
