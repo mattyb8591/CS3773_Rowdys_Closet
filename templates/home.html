@@ -34,13 +34,17 @@
             <img src="../static/img/hero_home_image.png" alt="hero image" class="img-fluid">
         </section>
 
-        <!-- Featured Carousel (you can make this dynamic later) -->
-        <section class="featured">
-            <h2>Featured</h2>
-            <div id="featuredCarousel" class="carousel slide" data-bs-ride="carousel">
-                <!-- Your existing carousel code -->
-            </div>
-        </section>
+        <!-- Sort control -->
+        <div class="container my-3">
+            <label for="sortSelect" class="me-2">Sort by:</label>
+            <select id="sortSelect" aria-label="Sort products">
+                <option value="default">Default</option>
+                <option value="price-asc">Price: Low → High</option>
+                <option value="price-desc">Price: High → Low</option>
+                <option value="availability-desc">Availability: Most → Least</option>
+                <option value="availability-asc">Availability: Least → Most</option>
+            </select>
+        </div>
 
         <!-- Dynamic Product Sections -->
         <!-- T-Shirts Section -->

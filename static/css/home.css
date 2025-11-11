@@ -53,96 +53,24 @@ main {
     font-weight: 600;
 }
 
-/* FEATURED / CAROUSEL */
-.featured {
-    padding: 8px 0 36px;
-    background-color: #ffffff00;
+/* Make the "Sort by" select have a transparent background */
+.container.my-3 {
+    background: transparent !important;
+    padding: 0.25rem 0; /* adjust spacing if needed */
 }
 
-.featured h2 {
-    text-align: center;
-    margin: 0 0 12px;
-    font-size: 1.6rem;
+#sortSelect {
+    background: #fff !important;
+    background-color: #fff !important;
     color: #111;
-}
-
-/* center and limit carousel width */
-#featuredCarousel {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 6px;
-}
-
-#featuredCarousel .carousel-item {
-    min-height: 500px; /* consistent panel height */
-    position: relative; /* preserve Bootstrap positioning */
-}
-
-#featuredCarousel .carousel-item.active,
-#featuredCarousel .carousel-item.carousel-item-start,
-#featuredCarousel .carousel-item.carousel-item-end {
-    display: flex;              /* only for visible / transitioning slides */
-    align-items: center;
-    justify-content: center;
-}
-
-/* Images: show whole image, constrained to panel */
-#featuredCarousel .carousel-item img,
-#featuredCarousel .carousel-img {
-    /* max-height: 100%; */
-    max-width: 100%; 
-    height: 500px;
-    object-fit: contain; /* no cropping */
-    margin: 0 auto;
-    border-radius: 6px;
-}
-
-/* Make carousel images have consistent height and crop cleanly */
-.carousel-img {
-    height: 500px;
-    object-fit: cover;
-    border-radius: 6px;
-    align-items: center;        /* vertical center image inside panel */
-    justify-content: center;  
-}
-
-/* Slight overlay for captions for readability */
-.carousel-caption {
-    background-color: #0c234031;
-    padding: 10px 12px;
-    border-radius: 6px;
-    left: 12px;
-    right: 12px;
-    bottom: 16px;
-}
-
-/* Caption text */
-.carousel-caption h5 {
-    margin: 0 0 6px;
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-.carousel-caption p {
-    margin: 0 0 8px;
-    color: #f1f1f1;
-}
-
-/* Small CTA inside caption */
-.carousel-caption .btn {
-    font-size: 0.85rem;
+    border: 1px solid #111;
     padding: 6px 10px;
-}
-
-/* Make indicators more visible on light images */
-.carousel-indicators [data-bs-target] {
-    background-color: rgba(0,0,0,0.45);
-}
-
-/* Accessibility: ensure controls are visible on light backgrounds */
-.carousel-control-prev-icon,
-.carousel-control-next-icon {
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.45));
+    border-radius: 6px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    box-shadow: none;
+    outline: none;
 }
 
 /* Search bar (nav) styling */
