@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app
+from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app, session, url_for
 import os
 import mysql.connector
 from werkzeug.security import check_password_hash
@@ -24,7 +24,6 @@ def load_products():
     cursor.close()
     db.close()
     
-    print(f"DEBUG: Raw products from DB: {len(all_products)}")
     
     # Use dictionary with product name as key to automatically handle duplicates
     products_dict = {}
@@ -34,7 +33,6 @@ def load_products():
         
         # If this product name is already in our dictionary, skip it
         if product_name in products_dict:
-            print(f"DEBUG: DUPLICATE FOUND - Skipping: {product_name}")
             continue
             
         products_dict[product_name] = {
@@ -46,11 +44,9 @@ def load_products():
             'description': product['description'],
             'stock': product['stock']
         }
-        print(f"DEBUG: ADDED: {product_name}")
     
     unique_products_list = list(products_dict.values())
-    print(f"DEBUG: After duplicate removal: {len(unique_products_list)} products")
-    
+
     products_by_type = {
         'T-Shirts': [],
         'Hoodies': [], 
@@ -67,14 +63,16 @@ def load_products():
     #  debug output
     for product_type, products in products_by_type.items():
         product_names = [p['name'] for p in products]
-        print(f"DEBUG: {product_type} ({len(products)}): {product_names}")
     
     return products_by_type
 
 @home_bp.route("/", methods=["GET"])
 def index():
+    if "isAdmin" not in session:
+        return redirect(url_for("login.login"))
+
     products_by_type = load_products()
-    return render_template("home.html", products_by_type=products_by_type)
+    return render_template("home.html", products_by_type=products_by_type, isAdmin=session["isAdmin"])
 
 @home_bp.route("/api/products")
 def get_products_api():
@@ -93,3 +91,5 @@ def debug_products():
         }
     
     return jsonify(debug_info)
+
+
