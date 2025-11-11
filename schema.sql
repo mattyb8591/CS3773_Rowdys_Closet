@@ -75,12 +75,14 @@ CREATE TABLE IF NOT EXISTS carts(
   FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 
-SELECT * FROM users;
+SELECT * FROM admins;
 
-SELECT * FROM customers;
+SELECT * FROM users;
 
 ALTER TABLE products
 ADD type varchar(25);
+
+INSERT INTO admins (user_id) VALUES (2);
 
 ALTER TABLE products
 ADD description varchar(500);

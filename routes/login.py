@@ -20,11 +20,22 @@ def login():
     cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
     user = cursor.fetchone()
+
+    cursor.execute("SELECT * FROM admins WHERE user_id = %s", (user["user_id"],))
+    adminRow = cursor.fetchone()
+    
     cursor.close()
     db.close()
 
     if user is None:
         return jsonify({"success": False, "message": "Invalid username or password."}), 401
+    
+    if adminRow:
+        session["isAdmin"] = True
+        print("is admin") #debug
+    else:
+        session["isAdmin"] = False
+        print("isnt admin") #debug
 
     session["user_id"] = user["user_id"]
     session["username"] = user["username"]
