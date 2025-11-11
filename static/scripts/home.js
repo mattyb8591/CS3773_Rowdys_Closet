@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    
     loadProducts();
     setTimeout(initializeScrollers, 100);
 });
