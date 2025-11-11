@@ -1,0 +1,61 @@
+/* ===== UNIVERSAL NAV BAR ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  .nav-bar {
+    background-color: #0c2340;      /* UTSA navy */
+    padding: 0.85rem 1.5rem;        /* Clean height */
+    border: none;
+    box-shadow: none;
+  }
+  
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .nav-left {
+    display: flex;
+    align-items: center;
+  }
+  
+  .nav-logo {
+    height: 64px;                  /* Decently big logo */
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .nav-links a {
+    color: #ffffff;                /* White text */
+    text-decoration: none;
+    font-family: Arial, sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  /* Keep links white even on hover or focus */
+  .nav-links a:hover,
+  .nav-links a:focus,
+  .nav-links a.active {
+    color: #ffffff;
+    text-decoration: none;
+  }
+  
