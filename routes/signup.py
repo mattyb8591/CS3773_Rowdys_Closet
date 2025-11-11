@@ -76,21 +76,7 @@ def signup():
         print(userid)
         print("Adding user to customers")
         cursor.execute("INSERT INTO customers (user_id) VALUES (%s)", (userid["user_id"],)
-
-        )
-
-        #create a cart for the user when they create an account
-        print("Creating a cart for the customer")
-        cursor.execute(
-        "SELECT customer_id FROM customers WHERE user_id = %s", (userid["user_id"],)
-        )
-
-        print("found the correct customer by searching userid")
-
-        customerid = cursor.fetchone()
-        print(customerid)
-        cursor.execute(
-        "INSERT INTO carts (customer_id) VALUES (%s)", (customerid["customer_id"],)
+    
         )
 
         db.commit()
