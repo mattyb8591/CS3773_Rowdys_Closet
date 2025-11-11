@@ -111,3 +111,11 @@ MODIFY COLUMN size VARCHAR(10);
 
 ALTER TABLE products
 MODIFY COLUMN name VARCHAR(100);
+
+SELECT * FROM users;
+
+SELECT * FROM customers
+
+SELECT * FROM carts;
+
+SELECT * FROM users;
