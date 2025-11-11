@@ -6,7 +6,7 @@ from werkzeug.security import check_password_hash
 item_bp = Blueprint("item", __name__, template_folder="templates", static_folder="static")
 
 @item_bp.route("/", methods=["GET"])
-def index(item_id,cart_id):
+def index(item_id):
     #db connection
 
     db = current_app.get_db_connection()
@@ -24,15 +24,13 @@ def index(item_id,cart_id):
         img = row['img_file_path']
 
         stock = row['stock']
+        cart_id="l"
     
     if request.method == "GET":
         return render_template("item.html", item_name=name, price=price,size=size, stock=stock)
 
     if request.method == "POST":
         quantity = request.method['quantity']
-        if quantity >= stock:
-            return 'not enough of stock'
-        
         stock = stock - quantity
         cursor.execute("UPDATE products SET stock = %s WHERE product_id = %s", (stock, item_id))
     
