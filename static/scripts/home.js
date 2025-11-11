@@ -1,64 +1,169 @@
 document.addEventListener('DOMContentLoaded', function () {
-	// Simple small script to set current year
-	const yearEl = document.getElementById('year');
-	if (yearEl) yearEl.textContent = new Date().getFullYear();
+    console.log('DOM loaded, starting product load...');
 
-	// Initialize all product scrollers on the page
-	document.querySelectorAll('.product-scroller').forEach(scroller => {
-		const wrapper = scroller.closest('.scroller-wrapper');
-		if (!wrapper) return;
-		const prevBtn = wrapper.querySelector('.scroller-prev');
-		const nextBtn = wrapper.querySelector('.scroller-next');
+    // read sort from URL so the choice persists if user bookmarks or refreshes
+    const params = new URLSearchParams(window.location.search);
+    currentSort = params.get('sort') || 'default';
 
-		function updateButtons() {
-			if (prevBtn) prevBtn.disabled = scroller.scrollLeft <= 0;
-			if (nextBtn) nextBtn.disabled = Math.ceil(scroller.scrollLeft + scroller.clientWidth) >= scroller.scrollWidth;
-		}
+    const sortSelect = document.getElementById('sortSelect');
+    if (sortSelect) {
+        sortSelect.value = currentSort;
+        // when user changes selection, update currentSort, update URL (no reload), and re-render
+        sortSelect.addEventListener('change', (e) => {
+            currentSort = e.target.value || 'default';
 
-		function scrollByCard(direction) {
-			const card = scroller.querySelector('.product-card');
-			if (!card) return;
-			let gap = 16;
-			try {
-				const cs = window.getComputedStyle(scroller);
-				gap = parseFloat(cs.columnGap || cs.gap) || gap;
-			} catch (e) { /* ignore */ }
-			const scrollAmount = (card.getBoundingClientRect().width + gap) * direction;
-			scroller.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-		}
+            // update query param without reloading the page
+            const p = new URLSearchParams(window.location.search);
+            if (currentSort === 'default') p.delete('sort'); else p.set('sort', currentSort);
+            const newUrl = window.location.pathname + (p.toString() ? '?' + p.toString() : '');
+            history.replaceState(null, '', newUrl);
 
-		if (prevBtn) prevBtn.addEventListener('click', () => scrollByCard(-1));
-		if (nextBtn) nextBtn.addEventListener('click', () => scrollByCard(1));
+            // call renderProducts() directly (no load/reload)
+            renderProducts();
+        });
+    }
 
-		scroller.addEventListener('scroll', updateButtons);
-		window.addEventListener('resize', updateButtons);
-		updateButtons();
-
-		// Mouse drag-to-scroll for this scroller
-		let isDown = false, startX = 0, scrollLeft = 0;
-		scroller.addEventListener('mousedown', (e) => {
-			isDown = true;
-			scroller.classList.add('dragging');
-			startX = e.pageX - scroller.offsetLeft;
-			scrollLeft = scroller.scrollLeft;
-		});
-		scroller.addEventListener('mouseleave', () => { isDown = false; scroller.classList.remove('dragging'); });
-		scroller.addEventListener('mouseup', () => { isDown = false; scroller.classList.remove('dragging'); });
-		scroller.addEventListener('mousemove', (e) => {
-			if (!isDown) return;
-			e.preventDefault();
-			const x = e.pageX - scroller.offsetLeft;
-			const walk = (x - startX) * 1;
-			scroller.scrollLeft = scrollLeft - walk;
-		});
-	});
-
-	// Add-to-cart handlers (delegated/static)
-	document.querySelectorAll('.add-to-cart').forEach(btn => {
-		btn.addEventListener('click', (e) => {
-			const id = btn.getAttribute('data-product-id');
-			console.log('Add to cart clicked for product', id);
-			// TODO: call your add-to-cart endpoint or form here
-		});
-	});
+    loadProducts();
+    setTimeout(initializeScrollers, 100);
 });
+
+let productsCache = {};    // cached API data keyed by type
+let currentSort = 'default';
+
+function loadProducts() {
+    console.log('Fetching products from API...');
+    
+    // Fetch products from the API endpoint
+    fetch('/home/api/products')
+        .then(response => {
+            console.log('API response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(productsByType => {
+            console.log('Products received from API (organized by type):', productsByType);
+            
+            // cache API data for client-side sorting/rendering
+            productsCache = productsByType || {};
+            renderProducts();
+        })
+        .catch(error => {
+            console.error('Error loading products:', error);
+            document.querySelectorAll('.product-scroller').forEach(scroller => {
+                scroller.innerHTML = '<div class="no-products">Error loading products. Please refresh the page.</div>';
+            });
+        });
+}
+
+function renderProducts() {
+    const sorted = sortProductsDeep(productsCache, currentSort);
+    displayProductsByType(sorted);
+}
+
+function sortProductsDeep(productsByType, sortKey) {
+    const out = {};
+    Object.keys(productsByType || {}).forEach(type => {
+        const arr = (productsByType[type] || []).slice(); // copy so we don't mutate cache
+        out[type] = sortArray(arr, sortKey);
+    });
+    return out;
+}
+
+function sortArray(arr, sortKey) {
+    if (!sortKey || sortKey === 'default') return arr;
+    const multiplier = sortKey.endsWith('-asc') ? 1 : -1;
+
+    if (sortKey.startsWith('price')) {
+        return arr.sort((a, b) => {
+            const pa = parseFloat(a.price) || 0;
+            const pb = parseFloat(b.price) || 0;
+            return (pa - pb) * multiplier;
+        });
+    }
+
+    if (sortKey.startsWith('availability')) {
+        return arr.sort((a, b) => {
+            const sa = Number(a.stock) || 0;
+            const sb = Number(b.stock) || 0;
+            return (sa - sb) * multiplier;
+        });
+    }
+
+    return arr;
+}
+
+function displayProductsByType(productsByType) {
+    console.log('Displaying products by type:', productsByType);
+    
+    // For each product type, display products in the corresponding section
+    Object.keys(productsByType).forEach(productType => {
+        const sectionId = getSectionId(productType);
+        const scroller = document.getElementById(sectionId);
+        
+        console.log(`Looking for section: ${productType} -> ${sectionId}`, scroller);
+        
+        if (scroller) {
+            const products = productsByType[productType];
+            console.log(`Found ${products.length} products for ${productType}:`, products.map(p => p.name));
+            
+            if (products.length === 0) {
+                scroller.innerHTML = '<div class="no-products">No products available</div>';
+                return;
+            }
+
+            scroller.innerHTML = '';
+
+            products.forEach(product => {
+                const productCard = createProductCard(product);
+                scroller.appendChild(productCard);
+            });
+        } else {
+            console.warn(`No scroller found for product type: ${productType}`);
+        }
+    });
+}
+
+function getSectionId(productType) {
+    const typeToId = {
+        'T-Shirts': 'shirtsScroller',
+        'Hoodies': 'hoodiesScroller',
+        'Jackets': 'jacketsScroller',
+        'Headwear': 'headwearScroller',
+        'Bags': 'bagsScroller'
+    };
+    return typeToId[productType];
+}
+
+function createProductCard(product) {
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    
+    const formattedPrice = parseFloat(product.price).toFixed(2);
+    const isOutOfStock = product.stock <= 0;
+    
+    const stockStatus = isOutOfStock ? 
+        '<span class="out-of-stock-tag">Out of Stock</span>' : 
+        `<button class="btn btn-sm btn-primary add-to-cart" data-product-id="${product.product_id}">Add to Cart</button>`;
+    
+    let imagePath = product.img_file_path;
+    if (imagePath && !imagePath.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+        imagePath += '.png';
+    }
+    
+    const imageHtml = imagePath ? 
+        `<img src="${imagePath}" alt="${product.name}" onerror="this.style.display='none'">` :
+        '<div class="no-image-placeholder"></div>';
+    
+    card.innerHTML = `
+        <div class="product-image-container">
+            ${imageHtml}
+        </div>
+        <div class="product-name">${product.name}</div>
+        <div class="product-price">$${formattedPrice}</div>
+        ${stockStatus}
+    `;
+    
+    return card;
+}

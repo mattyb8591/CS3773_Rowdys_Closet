@@ -62,8 +62,8 @@ def signup():
         
         print("Executing INSERT query...")  # Debug log
         cursor.execute(
-            "INSERT INTO users (username, email, password) VALUES (%s, %s, %s)",
-            (username, email, password_hash)
+            "INSERT INTO users (username, email, password, account_type) VALUES (%s, %s, %s, %s)",
+            (username, email, password_hash, "Customer")
         )
 
         print("Matching user to customer")

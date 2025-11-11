@@ -12,12 +12,25 @@ body{
     justify-content: flex-start;
 }
 
+.btn-container {
+    display: flex; 
+    justify-content: space-around; 
+    align-items: center;
+}
+
+.order-container {
+    background-color: white !important;
+    min-width: 500px;
+    min-height: 500px;
+    border-radius: 20px;
+    margin: 20px;
+    padding: 20px;
+}
+
 .profile-picture img{
     width: 150px;
     height: 150px;
     object-fit: cover;
-    border-radius: 50%;
-    border: 2px solid black;
     display: block;
     margin: 0 auto;
 }
@@ -32,6 +45,7 @@ body{
   margin: 0 auto;
 }
 
+<<<<<<< HEAD
 .profile-column{
     display: flex;
     flex-direction: column;
@@ -39,6 +53,28 @@ body{
     margin: 0 auto;
     margin-top: 20px;
     text-align: center;
+=======
+.profile-info{
+    justify-content: center;
+    padding: 40px;
+    text-align: left;
+    background-color: white !important;
+    border-radius: 20px;
+}
+
+.btn{
+    background-color: #0C2340 !important;
+    color: aliceblue !important;
+    margin: 20px;
+    width: 200px;
+}
+
+.edit-section{
+    margin-top: auto;
+    width: 100%;
+    float: left;
+    padding-top: 50px;
+>>>>>>> 90e3ab72639f89115e1378d70b56f416ab074144
 }
 
 .profile-left,
@@ -54,7 +90,11 @@ body{
     width: 100%;
     display: flex;
     justify-content: center;
+<<<<<<< HEAD
     padding-top: 30px;
+=======
+    padding-top: 50px;
+>>>>>>> 90e3ab72639f89115e1378d70b56f416ab074144
 }
 
 label{
@@ -72,4 +112,15 @@ p{
 select{
     font-size: 16px;
     padding: 5px;
+}
+
+input[type="text"],
+select {
+    display: block;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.title {
+    text-align: center;
 }

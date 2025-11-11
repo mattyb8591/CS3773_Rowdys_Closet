@@ -75,10 +75,14 @@ CREATE TABLE IF NOT EXISTS carts(
   FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );
 
+SELECT * FROM admins;
+
 SELECT * FROM users;
 
 ALTER TABLE products
 ADD type varchar(25);
+
+INSERT INTO admins (user_id) VALUES (2);
 
 ALTER TABLE products
 ADD description varchar(500);
@@ -97,5 +101,13 @@ ALTER TABLE products
 MODIFY stock INT NOT NULL DEFAULT 0;
 
 ALTER TABLE addresses
-ADD street_name INT NOT NULL;
+MODIFY COLUMN street_name VARCHAR(100);
 
+ALTER TABLE users
+ADD account_type varchar(50);
+
+ALTER TABLE products
+MODIFY COLUMN size VARCHAR(10);
+
+ALTER TABLE products
+MODIFY COLUMN name VARCHAR(100);
