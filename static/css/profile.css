@@ -3,8 +3,13 @@ body{
 }
 
 .profile-container {
-  margin: 0 auto;
-  display: flex;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 .profile-picture img{
@@ -18,7 +23,7 @@ body{
 }
 
 .profile-picture{
-    padding-bottom: 40px;
+    padding-bottom: 10px;
 }
 
 .welcome-message {
@@ -29,10 +34,19 @@ body{
 
 .profile-column{
     display: flex;
+    flex-direction: column;
     justify-content: center;
-    gap: 40px;
+    margin: 0 auto;
     margin-top: 20px;
     text-align: center;
+}
+
+.profile-left,
+.profile-right {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 250px; /* Equal width ensures alignment */
 }
 
 .logout-section{
@@ -40,7 +54,7 @@ body{
     width: 100%;
     display: flex;
     justify-content: center;
-    padding-top: 100px;
+    padding-top: 30px;
 }
 
 label{

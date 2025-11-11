@@ -27,45 +27,33 @@
                  </div>
                  <div class="nav-links">
                      <li><a href="home.html">Home</a></li>
-                     <li><a href="profile.html">Profile</a></li>
-                     <li><a href="cart.html">Checkout</a></li>
+                     <li><a href="adminProfile.html">Admin</a></li>
+                     <li><a href="list.html">Items</a></li>
                  </div>
             </div>
         </div>
     </header>
-    <div class="profile-container">
-    <div class="profile-picture">
-        <img src="../static/img/utsa_full_roadrunners_2008-pres^a 1.png" alt="Profile Picture">
-        <h3 class="welcome-message">Welcome, {{username}}</h3>
-        </div>
-    
+    <div class="profile-columns">
         
-        <div class="profile-column">  
+    <h3 class="welcome-message">Welcome admin, {{username}}</h3>
+        
         <!-- Left Column -->
-        <div class="profile-left">
-            <label>Email:</label>
-            <p>{{email}}</p>
-            <label>Phone number:</label>
-            <p>{{phone_number}}</p>
+        <div class="profile-column">
+            <label>Orders:</label>
+            <p>{{number of orders}}</p>
+            <label>Inventory:</label>
+            <p>{{status}}</p>
         </div>
 
         <!-- Right Column -->
-        <div class="profile-right">
-            <label>Address:</label>
-            <p>{{address}}</p>
-            <label for="accountType">Account type:</label>
-            <select id="accountType" name="accountType">
-            <option id="student" value="student">Student</option>
-            <option id="parent" value="parent">Parent</option>
-            <option id="staff" value="staff">Staff</option>
-            </select>
+        <div class="profile-column">
+            <label>Manage users:</label>
+            <p>{{list of users}}</p>
         </div>
     </div>
-
     <div class="logout-section">
         <form class="logout" id="logout" action="/logout" method="POST">
             <button type="submit">Log out</button>
         </form>
     </div>
-</div>
 </body>
