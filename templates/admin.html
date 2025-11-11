@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>Rowdy's Closet — Home</title>
+	<title>Rowdy's Closet — Admin Home</title>
 	<!-- Link to your stylesheet (update path as needed) -->
 	<link rel="stylesheet" href="../static/css/style.css" />
 	<link rel="stylesheet" href="../static/css/home.css" />
@@ -23,10 +23,86 @@
                     <!-- Commenting this line for now, just for Live Server use -->
                     <!-- <li><a href="{{ url_for('home.index') }}">Home</a></li> -->
                     <li><a href="home.html">Home</a></li>
-                    <li><a href="{{ url_for('adminProfile.index') }}">Admin</a></li>
+                    <li><a href="adminProfile.html">Admin</a></li>
                     <li><a href="{{ url_for('list.index') }}">Items</a></li>
                  </div>
             </div>
         </div>
 	</header>
+
+    <main>
+        <section class="hero">
+            <img src="../static/img/hero_home_image.png" alt="hero image" class="img-fluid">
+        </section>
+
+        <!-- Sort control -->
+        <div class="container my-3">
+            <label for="sortSelect" class="me-2">Sort by:</label>
+            <select id="sortSelect" aria-label="Sort products">
+                <option value="default">Default</option>
+                <option value="price-asc">Price: Low → High</option>
+                <option value="price-desc">Price: High → Low</option>
+                <option value="availability-desc">Availability: Most → Least</option>
+                <option value="availability-asc">Availability: Least → Most</option>
+            </select>
+        </div>
+
+        <!-- Dynamic Product Sections -->
+        <!-- T-Shirts Section -->
+        <section class="product-section container">
+            <h2>T-Shirts</h2>
+            <div class="scroller-wrapper">
+                <div class="product-scroller" id="shirtsScroller">
+                    <!-- Products will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Hoodies Section -->
+        <section class="product-section container">
+            <h2>Hoodies</h2>
+            <div class="scroller-wrapper">
+                <div class="product-scroller" id="hoodiesScroller">
+                    <!-- Products will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Jackets Section -->
+        <section class="product-section container">
+            <h2>Jackets</h2>
+            <div class="scroller-wrapper">
+                <div class="product-scroller" id="jacketsScroller">
+                    <!-- Products will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Headwear Section -->
+        <section class="product-section container">
+            <h2>Headwear</h2>
+            <div class="scroller-wrapper">
+                <div class="product-scroller" id="headwearScroller">
+                    <!-- Products will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Bags Section -->
+        <section class="product-section container">
+            <h2>Bags</h2>
+            <div class="scroller-wrapper">
+                <div class="product-scroller" id="bagsScroller">
+                    <!-- Products will be loaded here by JavaScript -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; <span id="year"></span> Rowdy's Closet. All rights reserved.</p>
+    </footer>
+
+    <script src="/static/scripts/home.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
