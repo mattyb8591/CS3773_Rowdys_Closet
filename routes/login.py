@@ -30,15 +30,14 @@ def login():
     if user is None:
         return jsonify({"success": False, "message": "Invalid username or password."}), 401
     
-    if adminRow:
-        session["isAdmin"] = True
-        print("is admin") #debug
-    else:
-        session["isAdmin"] = False
-        print("isnt admin") #debug
 
     session["user_id"] = user["user_id"]
     session["username"] = user["username"]
     session["email"] = user["email"]
 
-    return redirect(url_for("home.index"))
+    if adminRow:
+        print("is admin") #debug
+        return redirect(url_for("home.index"))
+    else:
+        print("isnt admin") #debug
+        return redirect(url_for("home.index"))

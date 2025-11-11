@@ -70,7 +70,7 @@ def load_products():
 def index():
 
     products_by_type = load_products()
-    return render_template("home.html", products_by_type=products_by_type, isAdmin=session["isAdmin"])
+    return render_template("home.html", products_by_type=products_by_type)
 
 @home_bp.route("/api/products")
 def get_products_api():
