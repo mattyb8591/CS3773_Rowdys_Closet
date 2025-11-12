@@ -90,4 +90,47 @@ def debug_products():
     
     return jsonify(debug_info)
 
+@home_bp.route("/searchrequest", methods=["POST", "GET"])
+def get_search():
 
+    from app import get_db_connection
+    db = get_db_connection()
+
+    #get the search POST request from home.js
+    if request.method == "POST":
+
+        data = request.get_json()
+        if data == None:
+            return jsonify({"error": "Invalid JSON"}), 400
+    
+        print(data)
+        search_request = data["search_data"]
+        print(search_request)
+
+        return redirect(url_for(('home.result_search'), jsondata=search_request))
+
+@home_bp.route("/searchresult", methods=["GET"])
+def result_search():
+
+    if request.method == "GET":
+
+        from app import get_db_connection
+        db = get_db_connection()
+        cursor = db.cursor()
+
+        data = request.args.get('jsondata')
+        print(data)
+        #search_request = data["search_data"]
+        #print(search_request)
+
+        print("Searching for the desired products based on the searchbar input")
+        cursor.execute("SELECT * FROM products WHERE name = %s OR type = %s OR description = %s", (data, data, data))
+        found_products = cursor.fetchone()
+        print(found_products)
+
+        if found_products is None:
+            found_products = "SEARCH ERROR: No Products Match this Description, Type, or Name"
+        print(found_products)
+        cursor.close()
+
+        return jsonify(found_products)

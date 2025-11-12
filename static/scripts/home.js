@@ -1,3 +1,5 @@
+
+
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, starting product load...');
 
@@ -146,7 +148,7 @@ function createProductCard(product) {
     
     const stockStatus = isOutOfStock ? 
         '<span class="out-of-stock-tag">Out of Stock</span>' : 
-        `<button class="btn btn-sm btn-primary add-to-cart" data-product-id="${product.product_id}">Add to Cart</button>`;
+        `<button class="btn btn-sm btn-primary add-to-cart" data-product-id="${product.product_id}">View Item</button>`;
     
     let imagePath = product.img_file_path;
     if (imagePath && !imagePath.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
@@ -168,3 +170,73 @@ function createProductCard(product) {
     
     return card;
 }
+
+
+async function searchRequest(searchText, searchForm){
+
+    //POST data to '/home/searchrequest'
+    
+    
+    try {   
+      const response = await fetch("/home/searchrequest", {
+        method: "POST",
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({search_data: searchText})
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        
+        searchForm.reset();
+
+        setTimeout(() => {
+          window.location.href = "/"; 
+        }, 2000);
+      } else {
+        console.log("Error with sending search request to home.py");
+      }
+    } catch (error) {
+      console.error("Fetch error:", error);
+    }
+
+    //GET results from '/home/searchrequest'
+    const searchResults = getSearchResults();
+    console.log(searchResults);
+    //Change dom based on the request 
+}
+
+async function getSearchResults(){
+
+    const request_data = null;
+
+    const getResults = await fetch("/home/searchresult")
+    .then(getResults => {
+            console.log('API response of searched products:', getResults.status);
+            if (!getResults.ok) {
+                throw new Error(`HTTP error! status: ${getResults.status}`);
+            }
+            console.log(getResults.json());
+            return getResults.json();
+    })
+    .then(data => {
+        console.log(data);
+        request_data = data;
+    })
+    .catch(error => {
+            console.error('Error getting searched products:', error);
+    });
+    
+    return request_data;
+}
+
+const submit = document.getElementById('search-submit');
+
+submit.addEventListener("click", async (event) => {
+    const elSearch = document.getElementById('site-search').value;
+    const searchForm = document.getElementById('searchBarGroup');
+    event.preventDefault();
+    await searchRequest(elSearch, searchForm);
+}, false);
