@@ -35,7 +35,7 @@ def index():
     products.img_file_path as image, 
     products.price as price, 
     products.size as size, 
-    products.type as category
+    products.type as category,
     COUNT(products.product_id) AS quantity
     FROM cart_products 
     INNER JOIN products ON cart_products.product_id = products.product_id 
