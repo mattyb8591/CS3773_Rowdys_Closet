@@ -20,11 +20,9 @@
                      <img src="../static/img/utsa_full_roadrunners_2008-pres^a 1.png" class="nav-logo" alt="Rowdy's Closet logo">
                  </div>
                  <div class="nav-links">
-                    <!-- Commenting this line for now, just for Live Server use -->
-                    <!-- <li><a href="{{ url_for('home.index') }}">Home</a></li> -->
-                    <li><a href="home.html">Home</a></li>
-                    <li><a href="adminProfile.html">Admin</a></li>
-                    <li><a href="{{ url_for('list.index') }}">Items</a></li>
+                     <li><a href="{{ url_for('admin.index') }}">Home</a></li>
+                     <li><a href="{{ url_for('admin-profile.index') }}">Admin</a></li>
+                     <li><a href="{{ url_for('items-list.index') }}">Items</a></li>
                  </div>
             </div>
         </div>

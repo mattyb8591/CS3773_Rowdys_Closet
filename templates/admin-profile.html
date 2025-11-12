@@ -26,34 +26,26 @@
                      <img src="../static/img/utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
                  </div>
                  <div class="nav-links">
-                     <li><a href="home.html">Home</a></li>
-                     <li><a href="adminProfile.html">Admin</a></li>
-                     <li><a href="list.html">Items</a></li>
+                     <li><a href="{{ url_for('admin.index') }}">Home</a></li>
+                     <li><a href="{{ url_for('admin-profile.index') }}">Admin</a></li>
+                     <li><a href="{{ url_for('items-list.index') }}">Items</a></li>
                  </div>
             </div>
         </div>
     </header>
-    <div class="profile-columns">
-        
+
     <h3 class="welcome-message">Welcome admin, {{username}}</h3>
         
-        <!-- Left Column -->
-        <div class="profile-column">
-            <label>Orders:</label>
-            <p>{{number of orders}}</p>
-            <label>Inventory:</label>
-            <p>{{status}}</p>
-        </div>
-
-        <!-- Right Column -->
-        <div class="profile-column">
-            <label>Manage users:</label>
-            <p>{{list of users}}</p>
-        </div>
+    <div class="profile-info">
+        <label>Orders:</label>
+        <p>{{number of orders}}</p>
+        <label>Inventory:</label>
+        <p>{{status}}</p>
     </div>
-    <div class="logout-section">
-        <form class="logout" id="logout" action="/logout" method="POST">
-            <button type="submit">Log out</button>
-        </form>
+
+    <div class="btn-container">
+        <a href="{{ url_for('profile.edit') }}" class="btn">Edit Profile</a>
+        <a href="{{ url_for('user.list') }}" class="btn">Manage Users</a>
+        <a href="{{ url_for('profile.logout') }}" class="btn btn-danger">Log out</a>
     </div>
 </body>
