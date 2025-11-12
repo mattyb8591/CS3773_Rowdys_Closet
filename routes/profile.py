@@ -29,7 +29,10 @@ def index():
     cursor.close()
     db.close()
 
-    return render_template("profile.html", user=user, address=address)
+    if session["isAdmin"]:
+        return render_template("admin-profile.html", user=user, address=address)
+    else:
+        return render_template("profile.html", user=user, address=address)
 
 @profile_bp.route("/edit", methods=['GET'])
 def edit():

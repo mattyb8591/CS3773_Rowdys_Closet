@@ -21,14 +21,15 @@ def login():
     cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
     user = cursor.fetchone()
 
+    if user is None:
+        return jsonify({"success": False, "message": "Invalid username or password."}), 401
+    
     cursor.execute("SELECT * FROM admins WHERE user_id = %s", (user["user_id"],))
     adminRow = cursor.fetchone()
     
     cursor.close()
     db.close()
 
-    if user is None:
-        return jsonify({"success": False, "message": "Invalid username or password."}), 401
     
 
     session["user_id"] = user["user_id"]
@@ -37,7 +38,9 @@ def login():
 
     if adminRow:
         print("is admin") #debug
-        return redirect(url_for("home.index"))
+        session["isAdmin"] = True
+        return redirect(url_for("admin.index"))
     else:
         print("isnt admin") #debug
+        session["isAdmin"] = False
         return redirect(url_for("home.index"))

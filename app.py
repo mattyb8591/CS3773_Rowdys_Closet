@@ -9,6 +9,7 @@ from routes.home import home_bp
 from routes.item import item_bp
 from routes.cart import cart_bp
 from routes.profile import profile_bp
+from routes.admin import admin_bp
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -19,6 +20,7 @@ app.register_blueprint(home_bp, url_prefix="/home")
 app.register_blueprint(item_bp, url_prefix="/item")
 app.register_blueprint(cart_bp, url_prefix="/cart")
 app.register_blueprint(profile_bp, url_prefix="/profile")
+app.register_blueprint(admin_bp, url_prefix="/admin")
 
 
 def get_db_connection():
