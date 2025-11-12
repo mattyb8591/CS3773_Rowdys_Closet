@@ -1,6 +1,6 @@
 // Initial cart data
 let cartItems = [
-    {
+  {
       id: 1,
       name: "UTSA Roadrunners Jersey",
       category: "Apparel",
@@ -24,12 +24,14 @@ let cartItems = [
       quantity: 1,
       image: "/utsa-hoodie-apparel.jpg",
     },
-  ]
+]
+cartItems = [];
+  
+
   
   let shipping = "standard"
   
-  
-  function init() {
+function init() {
     renderCartItems()
     updateSummary()
     setupEventListeners()
@@ -39,6 +41,7 @@ let cartItems = [
   function renderCartItems() {
     const cartItemsContainer = document.getElementById("cartItems")
     cartItemsContainer.innerHTML = ""
+
   
     cartItems.forEach((item) => {
       const itemElement = document.createElement("div")
@@ -142,7 +145,8 @@ let cartItems = [
       alert("Proceeding to checkout...")
     })
   }
+  console.log(cartItems.length);
   
   
-  document.addEventListener("DOMContentLoaded", init)
+ document.addEventListener("DOMContentLoaded", init)
   

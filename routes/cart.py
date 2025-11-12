@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app,url_for, session
+from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app,url_for, session, json
 import os
 from werkzeug.security import check_password_hash
 
@@ -23,11 +23,19 @@ def index():
     #grab all products that are in the users cart
     cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
     customer_id = cursor.fetchone()
+    customer_id = customer_id['customer_id']
+    print(customer_id) #Debug log
     cursor.execute("SELECT cart_id FROM carts WHERE customer_id = %s", (customer_id,))
     cart_id = cursor.fetchone()
+    cart_id = cart_id['cart_id']
     query = """ 
     
-    SELECT cart_products.cart_id, products.name, products.img_file_path, products.price
+    SELECT products.product_id as id, 
+    products.name as name, 
+    products.img_file_path as image, 
+    products.price as price, 
+    products.size as size, 
+    products.type as category
     FROM cart_products 
     INNER JOIN products ON cart_products.product_id = products.product_id 
     WHERE cart_products.cart_id = %s
@@ -38,11 +46,19 @@ def index():
     user_cart_items = cursor.fetchall()
     print(user_cart_items) #Debug log
     if not user_cart_items :
-        print("Cart is empty")  # Debug log
+        print("No items found in cart")
+        jsonify([])
+        
+        return render_template("cart.html", cartItems=[], itemCount=0, summaryItemCount=0)
     cursor.close()
+
     db.close()
     
 
     #return a list of all products to be rendered
-
-    return render_template("cart.html", user_cart_items=user_cart_items)
+    if request.method == 'GET':
+        cart_items=request.form.get("cartItems")
+        print(cart_items)
+        print(user_cart_items)
+        return render_template("cart.html", cartItems=user_cart_items)
+    
