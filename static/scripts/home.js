@@ -1,5 +1,3 @@
-
-
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, starting product load...');
 
@@ -148,7 +146,8 @@ function createProductCard(product) {
     
     const stockStatus = isOutOfStock ? 
         '<span class="out-of-stock-tag">Out of Stock</span>' : 
-        `<button class="btn btn-sm btn-primary add-to-cart" data-product-id="${product.product_id}">View Item</button>`;
+        // make this a link to the item page so the server loads item details
+        `<a class="btn btn-sm btn-primary view-item" href="/item/${product.product_id}">View Item</a>`;
     
     let imagePath = product.img_file_path;
     if (imagePath && !imagePath.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {

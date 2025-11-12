@@ -3,12 +3,24 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Item — Rowdy's Closet</title>
+    <title>{{ item.name }} — Rowdy's Closet</title>
     <link rel="stylesheet" href="/static/css/style.css" />
-    <link rel="stylesheet" href="/static/css/home.css" />
-    <!-- Add scripts/styles as needed -->
 </head>
 <body>
-    <!-- blank canvas: start adding markup inside <body> -->
+    <main class="container">
+        <a href="{{ url_for('home.index') }}">← Back to home</a>
+        <div class="item-detail">
+            {% if item.img_file_path %}
+                <img src="{{ item.img_file_path }}" alt="{{ item.name }}" onerror="this.style.display='none'">
+            {% endif %}
+            <h1>{{ item.name }}</h1>
+            <p class="price">${{ '%.2f'|format(item.price) }}</p>
+            <p>Size: {{ item.size }}</p>
+            <p>Type: {{ item.type }}</p>
+            <p>Stock: {{ item.stock }}</p>
+            <p>{{ item.description }}</p>
+            <!-- add an Add to Cart form/button here if desired -->
+        </div>
+    </main>
 </body>
 </html>
