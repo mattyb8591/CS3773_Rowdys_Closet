@@ -40,6 +40,7 @@ def index():
     FROM cart_products 
     INNER JOIN products ON cart_products.product_id = products.product_id 
     WHERE cart_products.cart_id = %s
+    GROUP BY products.product_id
 
     """
     cursor.execute(query,(cart_id,))
