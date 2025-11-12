@@ -1,8 +1,23 @@
 from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app,url_for, session
 import os
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+import mysql.connector
+from mysql.connector import Error
 
 admin_bp = Blueprint("admin", __name__, template_folder="templates", static_folder="static")
+
+def get_db_connection():
+    try:
+        conn = mysql.connector.connect(
+            host="20.120.180.6",
+            user="rowdy",
+            password="rowdyscloset",
+            database="rowdys_closet_db"
+        )
+        return conn
+    except Error as e:
+        print(f"Error: {e}")
+        return None
 
 @admin_bp.before_request
 def require_admin():
@@ -18,7 +33,7 @@ def index():
     
 @admin_bp.route("/dashboard")
 def dashboard(): 
-    db = current_app.get_db_connection()
+    conn = get_db_connection()
 
     stats = {
         'total_orders': 0,
@@ -26,8 +41,8 @@ def dashboard():
         'total_products': 0
     }
 
-    if db:
-        cursor = db.cursor(dictionary=True)
+    if conn:
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("SELECT COUNT(*) FROM orders")
         stats['total_orders'] = cursor.fetchone()['COUNT(*)']
@@ -39,42 +54,409 @@ def dashboard():
         stats['total_products'] = cursor.fetchone()['COUNT(*)']
             
         cursor.close()
-        db.close()
+        conn.close()
     
     return render_template("admin-dashboard.html", stats=stats, username=session['username'])
 
 @admin_bp.route("/users")
 def user_list():
-    return render_template("admin.html")
+    return render_template("user-list.html")
 
-@admin_bp.route("/users/<int:user_id>/edit", methods=['GET', 'POST'])
-def edit_user(user_id):
-    return render_template("admin.html")
+@admin_bp.route("/api/users")
+def api_users():
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.user_id, u.username, u.email, u.phone_number, 
+                CONCAT(a.street_number, " ", a.street_name, ", ", a.city, ", ", a.state_abrev, " ", a.zip_code) AS full_address,
+                CASE WHEN ad.user_id IS NOT NULL THEN 'Admin' ELSE 'Customer' END AS user_role
+            FROM users u
+            LEFT JOIN addresses a ON u.address_id = a.address_id
+            LEFT JOIN admins ad ON u.user_id = ad.user_id
+            ORDER BY u.user_id DESC;
+                       """)
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(users)
+
+    return jsonify([])
+
+@admin_bp.route("/api/users/<int:user_id>")
+def api_user_detail(user_id):
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.user_id, u.username, u.email, u.phone_number, 
+                a.street_number, a.street_name, a.city, a.state_abrev, a.zip_code,
+                CASE WHEN ad.user_id IS NOT NULL THEN 'Admin' ELSE 'Customer' END AS user_role
+            FROM users u
+            LEFT JOIN addresses a ON u.address_id = a.address_id
+            LEFT JOIN admins ad ON u.user_id = ad.user_id
+            WHERE u.user_id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if user:
+            return jsonify(user)
+    return jsonify({"error": "User not found"}), 404
+
+@admin_bp.route("/api/users", methods=["POST"])
+def api_create_user():
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    phone_number = data.get('phone_number')
+    street_number = data.get('street_number')
+    street_name = data.get('street_name')
+    city = data.get('city')
+    state_abrev = data.get('state_abrev')
+    zip_code = data.get('zip_code')
+    user_role = data.get('user_role', 'Customer')
+    
+    if not username or not email or not password:
+        return jsonify({"error": "Username, email and password are required"}), 400
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            conn.start_transaction()
+            
+            address_id = None
+            if street_number and street_name and city and state_abrev and zip_code:
+                cursor.execute("""
+                    INSERT INTO addresses (street_number, street_name, city, state_abrev, zip_code)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (street_number, street_name, city, state_abrev, zip_code))
+                address_id = cursor.lastrowid
+            
+            cursor.execute("""
+                INSERT INTO users (username, email, password, phone_number, address_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (username, email, password, phone_number, address_id))
+            user_id = cursor.lastrowid
+            
+            if user_role == 'Admin':
+                cursor.execute("INSERT INTO admins (user_id) VALUES (%s)", (user_id,))
+            
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True, "user_id": user_id})
+            
+        except mysql.connector.IntegrityError as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Username or email already exists"}), 400
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/api/users/<int:user_id>", methods=["PUT"])
+def api_update_user(user_id):
+    data = request.json
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+    phone_number = data.get('phone_number')
+    street_number = data.get('street_number')
+    street_name = data.get('street_name')
+    city = data.get('city')
+    state_abrev = data.get('state_abrev')
+    zip_code = data.get('zip_code')
+    user_role = data.get('user_role')
+    
+    if not username or not email:
+        return jsonify({"error": "Username and email are required"}), 400
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            conn.start_transaction()
+            
+            cursor.execute("SELECT address_id FROM users WHERE user_id = %s", (user_id,))
+            current_user = cursor.fetchone()
+            current_address_id = current_user[0] if current_user else None
+            
+            if street_number and street_name and city and state_abrev and zip_code:
+                if current_address_id:
+                    cursor.execute("""
+                        UPDATE addresses 
+                        SET street_number = %s, street_name = %s, city = %s, state_abrev = %s, zip_code = %s
+                        WHERE address_id = %s
+                    """, (street_number, street_name, city, state_abrev, zip_code, current_address_id))
+                else:
+                    cursor.execute("""
+                        INSERT INTO addresses (street_number, street_name, city, state_abrev, zip_code)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (street_number, street_name, city, state_abrev, zip_code))
+                    current_address_id = cursor.lastrowid
+            else:
+                current_address_id = None
+            
+            if password:
+                hashed_password = generate_password_hash(password)
+                cursor.execute("""
+                    UPDATE users 
+                    SET username = %s, email = %s, password_hash = %s, phone_number = %s, address_id = %s
+                    WHERE user_id = %s
+                """, (username, email, hashed_password, phone_number, current_address_id, user_id))
+            else:
+                cursor.execute("""
+                    UPDATE users 
+                    SET username = %s, email = %s, phone_number = %s, address_id = %s
+                    WHERE user_id = %s
+                """, (username, email, phone_number, current_address_id, user_id))
+            
+            cursor.execute("DELETE FROM admins WHERE user_id = %s", (user_id,))
+            if user_role == 'Admin':
+                cursor.execute("INSERT INTO admins (user_id) VALUES (%s)", (user_id,))
+                
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True})
+            
+        except mysql.connector.IntegrityError as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Username or email already exists"}), 400
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/api/users/<int:user_id>", methods=["DELETE"])
+def api_delete_user(user_id):
+    if user_id == session.get('user_id'):
+        return jsonify({"error": "You cannot delete your own account"}), 400
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            conn.start_transaction()
+            
+            cursor.execute("SELECT address_id FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+            address_id = user[0] if user else None
+            
+            cursor.execute("DELETE FROM admins WHERE user_id = %s", (user_id,))
+            
+            cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+            
+            if address_id:
+                cursor.execute("SELECT COUNT(*) FROM users WHERE address_id = %s", (address_id,))
+                address_users = cursor.fetchone()[0]
+                if address_users == 0:
+                    cursor.execute("DELETE FROM addresses WHERE address_id = %s", (address_id,))
+            
+            conn.commit()
+            affected_rows = cursor.rowcount
+            cursor.close()
+            conn.close()
+            
+            if affected_rows > 0:
+                return jsonify({"success": True})
+            else:
+                return jsonify({"error": "User not found"}), 404
+                
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
 
 @admin_bp.route("/products")
 def product_list():
-    return render_template("admin.html")
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM products")
+        products = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("admin-products.html", products=products)
+    return render_template("admin-products.html", products=[])
 
 @admin_bp.route("/products/<int:product_id>/edit", methods=['GET', 'POST'])
-def edit_product():
-    return render_template("admin.html")
+def edit_product(product_id):
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        price = request.form.get('price')
+        stock_quantity = request.form.get('stock_quantity')
+        category = request.form.get('category')
+        image_url = request.form.get('image_url')
+        on_sale = 1 if request.form.get('on_sale') else 0
+        sale_price = request.form.get('sale_price')
+        
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            if on_sale and sale_price:
+                cursor.execute("""
+                    UPDATE products 
+                    SET name = %s, description = %s, price = %s, stock_quantity = %s, 
+                        category = %s, image_url = %s, on_sale = %s, sale_price = %s
+                    WHERE product_id = %s
+                """, (name, description, price, stock_quantity, category, image_url, on_sale, sale_price, product_id))
+            else:
+                cursor.execute("""
+                    UPDATE products 
+                    SET name = %s, description = %s, price = %s, stock_quantity = %s, 
+                        category = %s, image_url = %s, on_sale = %s, sale_price = NULL
+                    WHERE product_id = %s
+                """, (name, description, price, stock_quantity, category, image_url, on_sale, product_id))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return redirect(url_for('admin.product_list'))
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM products WHERE product_id = %s", (product_id,))
+        product = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return render_template("edit-product.html", product=product)
+    return redirect(url_for('admin.product_list'))
 
 @admin_bp.route("/products/new", methods=['GET', 'POST'])
 def new_product():
-    return render_template("admin.html")
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        price = request.form.get('price')
+        stock_quantity = request.form.get('stock_quantity')
+        category = request.form.get('category')
+        image_url = request.form.get('image_url')
+        
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO products (name, description, price, stock_quantity, category, image_url)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (name, description, price, stock_quantity, category, image_url))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return redirect(url_for('admin.product_list'))
+    
+    return render_template("new-product.html")
 
 @admin_bp.route("/discounts")
 def discount_list():
-    return render_template("admin.html")
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM discount_codes")
+        discounts = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("admin-discounts.html", discounts=discounts)
+    return render_template("admin-discounts.html", discounts=[])
 
 @admin_bp.route("/discounts/new", methods=['GET', 'POST'])
 def new_discount():
-    return render_template("admin.html")
+    if request.method == 'POST':
+        code = request.form.get('code')
+        discount_type = request.form.get('discount_type')
+        value = request.form.get('value')
+        min_purchase = request.form.get('min_purchase')
+        expiration_date = request.form.get('expiration_date')
+        
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO discount_codes (code, discount_type, value, min_purchase, expiration_date)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (code, discount_type, value, min_purchase or None, expiration_date or None))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return redirect(url_for('admin.discount_list'))
+    
+    return render_template("new-discount.html")
 
 @admin_bp.route("/orders")
 def order_list():
-    return render_template("admin.html")
+    sort_by = request.args.get('sort', 'order_date')
+    order = request.args.get('order', 'desc')
+    
+    valid_sorts = ['order_date', 'total_amount', 'username']
+    valid_orders = ['asc', 'desc']
+    
+    if sort_by not in valid_sorts:
+        sort_by = 'order_date'
+    if order not in valid_orders:
+        order = 'desc'
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        
+        if sort_by == 'username':
+            order_by = f"u.username {order}"
+        else:
+            order_by = f"o.{sort_by} {order}"
+            
+        cursor.execute(f"""
+            SELECT o.order_id, o.order_date, o.total_amount, u.username, 
+                   COUNT(oi.order_item_id) as item_count
+            FROM orders o 
+            JOIN users u ON o.user_id = u.user_id 
+            LEFT JOIN order_items oi ON o.order_id = oi.order_id
+            GROUP BY o.order_id
+            ORDER BY {order_by}
+        """)
+        orders = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("admin-orders.html", orders=orders, sort_by=sort_by, order=order)
+    return render_template("admin-orders.html", orders=[])
 
 @admin_bp.route("/orders/<int:order_id>")
 def order_detail(order_id):
-    return render_template("admin.html")
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT o.*, u.username, u.email, u.address
+            FROM orders o 
+            JOIN users u ON o.user_id = u.user_id 
+            WHERE o.order_id = %s
+        """, (order_id,))
+        order = cursor.fetchone()
+        
+        cursor.execute("""
+            SELECT oi.*, p.name, p.image_url
+            FROM order_items oi 
+            JOIN products p ON oi.product_id = p.product_id 
+            WHERE oi.order_id = %s
+        """, (order_id,))
+        items = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return render_template("order-detail.html", order=order, items=items)
+    return redirect(url_for('admin.order_list'))

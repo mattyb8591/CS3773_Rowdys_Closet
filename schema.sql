@@ -119,3 +119,14 @@ SELECT * FROM customers
 SELECT * FROM carts;
 
 SELECT * FROM users;
+
+SELECT u.user_id, 
+      u.username, 
+      u.email, 
+      u.phone_number, 
+      CONCAT(a.street_number, " ", a.street_name, ", ", a.city, ", ", a.state_abrev, " ", a.zip_code) AS full_address,
+      CASE WHEN ad.user_id IS NOT NULL THEN 'Admin' ELSE 'Customer' END AS user_role
+    FROM users u
+    LEFT JOIN addresses a ON u.address_id = a.address_id
+    LEFT JOIN admins ad ON u.user_id = ad.user_id
+    ORDER BY u.user_id DESC;
