@@ -49,7 +49,7 @@ def index():
         print("No items found in cart")
         jsonify([])
         
-        return render_template("cart.html", cartItems=[], itemCount=0, summaryItemCount=0)
+        return render_template("cart.html", cartItems=[])
     cursor.close()
 
     db.close()
