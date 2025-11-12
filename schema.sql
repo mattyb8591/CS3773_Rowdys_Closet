@@ -79,6 +79,8 @@ SELECT * FROM admins;
 
 SELECT * FROM users;
 
+SELECT * FROM products;
+
 ALTER TABLE products
 ADD type varchar(25);
 

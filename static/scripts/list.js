@@ -1,10 +1,176 @@
-// static/scripts/list.js
-
+// Global variables for user management
 let currentPage = 1;
 const usersPerPage = 10;
 let allUsers = [];
 let filteredUsers = [];
 let userToDelete = null;
+
+// Global variables for product management
+let allProducts = [];
+let filteredProducts = [];
+let productToDelete = null;
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Check which page we're on and initialize accordingly
+    if (document.getElementById('usersTableBody')) {
+        loadUsers();
+    }
+    if (document.getElementById('productsTableBody')) {
+        initializeProductPage();
+        loadProducts();
+    }
+});
+
+// ==================== SHARED UTILITY FUNCTIONS ====================
+
+// Reset filters for products
+function resetProductFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('sizeFilter').value = '';
+    document.getElementById('stockFilter').value = '';
+    filteredProducts = [...allProducts];
+    currentPage = 1;
+    displayProducts();
+    setupPagination();
+}
+
+// Reset filters for users
+function resetUserFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('roleFilter').value = '';
+    filteredUsers = [...allUsers];
+    currentPage = 1;
+    displayUsers();
+    setupPagination();
+}
+
+// Universal reset function that detects which page we're on
+function resetFilters() {
+    if (document.getElementById('productsTableBody')) {
+        resetProductFilters();
+    } else if (document.getElementById('usersTableBody')) {
+        resetUserFilters();
+    }
+}
+
+// Setup pagination
+function setupPagination() {
+    const pagination = document.getElementById('pagination');
+    const items = document.getElementById('usersTableBody') ? filteredUsers : filteredProducts;
+    const pageCount = Math.ceil(items.length / usersPerPage);
+    
+    if (pageCount <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+
+    let paginationHTML = '';
+    
+    // Previous button
+    paginationHTML += `
+        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
+        </li>
+    `;
+    
+    // Page numbers
+    for (let i = 1; i <= pageCount; i++) {
+        paginationHTML += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `;
+    }
+    
+    // Next button
+    paginationHTML += `
+        <li class="page-item ${currentPage === pageCount ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
+        </li>
+    `;
+    
+    pagination.innerHTML = paginationHTML;
+}
+
+// Change page
+function changePage(page) {
+    currentPage = page;
+    if (document.getElementById('usersTableBody')) {
+        displayUsers();
+    }
+    if (document.getElementById('productsTableBody')) {
+        displayProducts();
+    }
+    setupPagination();
+}
+
+// Show/hide loading spinner for table
+function showTableLoading(show) {
+    const spinner = document.getElementById('loadingSpinner');
+    const tableBody = document.getElementById('usersTableBody') || document.getElementById('productsTableBody');
+    const pagination = document.getElementById('pagination');
+    
+    if (show) {
+        spinner.classList.remove('d-none');
+        if (tableBody) tableBody.innerHTML = '';
+        if (pagination) pagination.innerHTML = '';
+    } else {
+        spinner.classList.add('d-none');
+    }
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    
+    const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Remove toast from DOM after it's hidden
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+// Utility function to escape HTML
+function escapeHtml(unsafe) {
+    if (!unsafe) return '';
+    return unsafe
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// ==================== USER MANAGEMENT FUNCTIONS ====================
 
 // Load users from the server
 async function loadUsers() {
@@ -76,51 +242,6 @@ function displayUsers() {
     `).join('');
 }
 
-// Setup pagination
-function setupPagination() {
-    const pagination = document.getElementById('pagination');
-    const pageCount = Math.ceil(filteredUsers.length / usersPerPage);
-    
-    if (pageCount <= 1) {
-        pagination.innerHTML = '';
-        return;
-    }
-
-    let paginationHTML = '';
-    
-    // Previous button
-    paginationHTML += `
-        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">Previous</a>
-        </li>
-    `;
-    
-    // Page numbers
-    for (let i = 1; i <= pageCount; i++) {
-        paginationHTML += `
-            <li class="page-item ${i === currentPage ? 'active' : ''}">
-                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
-            </li>
-        `;
-    }
-    
-    // Next button
-    paginationHTML += `
-        <li class="page-item ${currentPage === pageCount ? 'disabled' : ''}">
-            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">Next</a>
-        </li>
-    `;
-    
-    pagination.innerHTML = paginationHTML;
-}
-
-// Change page
-function changePage(page) {
-    currentPage = page;
-    displayUsers();
-    setupPagination();
-}
-
 // Search users
 function searchUsers() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
@@ -144,17 +265,7 @@ function searchUsers() {
 
 // Filter users by role
 function filterUsers() {
-    searchUsers(); // Reuse search function which handles both search and filters
-}
-
-// Reset filters
-function resetFilters() {
-    document.getElementById('searchInput').value = '';
-    document.getElementById('roleFilter').value = '';
-    filteredUsers = [...allUsers];
-    currentPage = 1;
-    displayUsers();
-    setupPagination();
+    searchUsers();
 }
 
 // Open add user modal
@@ -172,7 +283,6 @@ function openAddUserModal() {
 
 // Edit user
 async function editUser(userId) {
-    // Don't show table loading for edit - we want the table to remain visible
     try {
         const response = await fetch(`/admin/api/users/${userId}`);
         if (response.ok) {
@@ -297,66 +407,360 @@ async function confirmDelete() {
     }
 }
 
-// Show/hide loading spinner for table
-function showTableLoading(show) {
-    const spinner = document.getElementById('loadingSpinner');
-    const tableBody = document.getElementById('usersTableBody');
-    const pagination = document.getElementById('pagination');
+// ==================== PRODUCT MANAGEMENT FUNCTIONS ====================
+
+// Initialize product page
+function initializeProductPage() {
+    // No special initialization needed
+}
+
+// Load products from the server
+async function loadProducts() {
+    showTableLoading(true);
     
-    if (show) {
-        spinner.classList.remove('d-none');
-        tableBody.innerHTML = '';
-        pagination.innerHTML = '';
-    } else {
-        spinner.classList.add('d-none');
+    try {
+        const response = await fetch('/admin/api/products');
+        if (response.ok) {
+            const products = await response.json();
+            allProducts = products;
+            
+            // Apply current filters to the new data
+            if (document.getElementById('searchInput').value || 
+                document.getElementById('typeFilter').value || 
+                document.getElementById('sizeFilter').value || 
+                document.getElementById('stockFilter').value) {
+                searchProducts(); // This will apply current filters
+            } else {
+                filteredProducts = [...allProducts];
+                displayProducts();
+                setupPagination();
+            }
+        } else {
+            throw new Error('Failed to load products');
+        }
+    } catch (error) {
+        console.error('Error loading products:', error);
+        showToast('Error loading products. Please try again.', 'error');
+    } finally {
+        showTableLoading(false);
     }
 }
 
-// Show toast notification
-function showToast(message, type = 'info') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toastContainer';
-        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-        document.body.appendChild(toastContainer);
+// Display products in the table
+function displayProducts() {
+    const tableBody = document.getElementById('productsTableBody');
+    const startIndex = (currentPage - 1) * usersPerPage;
+    const endIndex = startIndex + usersPerPage;
+    const productsToDisplay = filteredProducts.slice(startIndex, endIndex);
+
+    if (productsToDisplay.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-4">
+                    <div class="text-muted">
+                        <i class="bi bi-box" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No products found</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
     }
+
+    tableBody.innerHTML = productsToDisplay.map(product => `
+        <tr>
+            <td>
+                ${product.img_file_path ? 
+                    `<img src="${escapeHtml(product.img_file_path)}" alt="${escapeHtml(product.name)}" class="img-thumbnail">` : 
+                    '<div class="text-muted text-center">No Image</div>'
+                }
+            </td>
+            <td>
+                <strong>${escapeHtml(product.name)}</strong>
+                ${product.description ? `<br><small class="text-muted">${escapeHtml(product.description.substring(0, 50))}${product.description.length > 50 ? '...' : ''}</small>` : ''}
+            </td>
+            <td>
+                <span class="badge bg-secondary category-badge">${escapeHtml(product.type)}</span>
+            </td>
+            <td>
+                <span class="badge bg-info size-badge">${escapeHtml(product.size || 'One Size')}</span>
+            </td>
+            <td>
+                $${parseFloat(product.price).toFixed(2)}
+            </td>
+            <td>
+                <span class="${product.stock === 0 ? 'stock-low' : product.stock < 10 ? 'stock-low' : 'stock-ok'}">
+                    ${product.stock}
+                </span>
+            </td>
+            <td class="actions">
+                <button class="btn btn-sm btn-primary" onclick="editProduct(${product.product_id})" title="Edit Product">
+                    <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct(${product.product_id}, '${escapeHtml(product.name)}')" title="Delete Product">
+                    <i class="bi bi-trash"></i> Delete
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Search products
+function searchProducts() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const typeFilter = document.getElementById('typeFilter').value;
+    const sizeFilter = document.getElementById('sizeFilter').value;
+    const stockFilter = document.getElementById('stockFilter').value;
     
-    const toastId = 'toast-' + Date.now();
-    const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-info';
+    filteredProducts = allProducts.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchTerm) ||
+                            (product.description && product.description.toLowerCase().includes(searchTerm));
+        
+        const matchesType = !typeFilter || product.type === typeFilter;
+        
+        // Handle size filtering (NULL sizes are "One Size")
+        const productSize = product.size || 'One Size';
+        const matchesSize = !sizeFilter || productSize === sizeFilter;
+        
+        const matchesStock = !stockFilter || 
+            (stockFilter === 'low' && product.stock < 10 && product.stock > 0) ||
+            (stockFilter === 'out' && product.stock === 0) ||
+            (stockFilter === 'in' && product.stock > 0);
+        
+        return matchesSearch && matchesType && matchesSize && matchesStock;
+    });
     
-    const toastHTML = `
-        <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert">
-            <div class="d-flex">
-                <div class="toast-body">
-                    ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        </div>
-    `;
+    currentPage = 1;
+    displayProducts();
+    setupPagination();
+}
+
+// Filter products
+function filterProducts() {
+    searchProducts();
+}
+
+// Open add product modal
+function openAddProductModal() {
+    document.getElementById('productModalLabel').textContent = 'Add New Product';
+    document.getElementById('productForm').reset();
+    document.getElementById('productId').value = '';
     
-    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-    
-    const toastElement = document.getElementById(toastId);
-    const toast = new bootstrap.Toast(toastElement);
-    toast.show();
-    
-    // Remove toast from DOM after it's hidden
-    toastElement.addEventListener('hidden.bs.toast', () => {
-        toastElement.remove();
+    const modal = new bootstrap.Modal(document.getElementById('productModal'));
+    modal.show();
+}
+
+// Edit product
+async function editProduct(productId) {
+    try {
+        const response = await fetch(`/admin/api/products/${productId}`);
+        if (response.ok) {
+            const product = await response.json();
+            
+            document.getElementById('productModalLabel').textContent = 'Edit Product';
+            document.getElementById('productId').value = product.product_id;
+            document.getElementById('name').value = product.name;
+            document.getElementById('description').value = product.description || '';
+            document.getElementById('type').value = product.type;
+            document.getElementById('price').value = product.price;
+            
+            // Handle NULL size - convert to "One Size" for the form
+            const displaySize = product.size || 'One Size';
+            document.getElementById('size').value = displaySize;
+            
+            document.getElementById('stock').value = product.stock;
+            document.getElementById('img_file_path').value = product.img_file_path || '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('productModal'));
+            modal.show();
+        } else {
+            throw new Error('Failed to load product data');
+        }
+    } catch (error) {
+        console.error('Error loading product:', error);
+        showToast('Error loading product data. Please try again.', 'error');
+    }
+}
+
+// Check if product already exists (for duplicate validation)
+function checkForDuplicateProduct(productData, currentProductId = null) {
+    return allProducts.some(product => {
+        // Skip the current product when editing
+        if (currentProductId && product.product_id === currentProductId) {
+            return false;
+        }
+        
+        // Compare all relevant fields
+        return product.name === productData.name &&
+               product.type === productData.type &&
+               product.size === productData.size &&
+               parseFloat(product.price) === parseFloat(productData.price) &&
+               product.description === (productData.description || '') &&
+               product.img_file_path === (productData.img_file_path || '');
     });
 }
 
-// Utility function to escape HTML
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return unsafe
-        .toString()
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+// Save product (add or update)
+async function saveProduct() {
+    const form = document.getElementById('productForm');
+    const formData = new FormData(form);
+    let productData = Object.fromEntries(formData.entries());
+    
+    // Convert "One Size" to NULL for database storage
+    if (productData.size === 'One Size') {
+        productData.size = null;
+    }
+    
+    // Convert numeric fields
+    productData.price = parseFloat(productData.price);
+    productData.stock = parseInt(productData.stock);
+    
+    // Handle empty strings for optional fields
+    if (!productData.description) productData.description = '';
+    if (!productData.img_file_path) productData.img_file_path = '';
+    
+    const productId = document.getElementById('productId').value;
+    const isEdit = !!productId;
+    
+    // Validate required fields
+    if (!productData.name || !productData.type || !productData.price || productData.stock === '') {
+        showToast('Name, type, price, and stock are required.', 'error');
+        return;
+    }
+    
+    // Size is required but can be "One Size" (which becomes NULL)
+    if (!productData.size && productData.size !== null) {
+        showToast('Size is required.', 'error');
+        return;
+    }
+    
+    // Check for duplicate product
+    if (checkForDuplicateProduct(productData, isEdit ? parseInt(productId) : null)) {
+        showToast('A product with these exact attributes already exists. Please modify at least one attribute.', 'error');
+        return;
+    }
+    
+    const url = isEdit ? `/admin/api/products/${productId}` : '/admin/api/products';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productData)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
+            modal.hide();
+            
+            // Save current filter state before reloading
+            const currentSearch = document.getElementById('searchInput').value;
+            const currentType = document.getElementById('typeFilter').value;
+            const currentSize = document.getElementById('sizeFilter').value;
+            const currentStock = document.getElementById('stockFilter').value;
+            const currentPageBeforeReload = currentPage;
+            
+            await loadProducts(); // Reload the product list
+            
+            // Try to restore the previous page and selection
+            if (currentSearch || currentType || currentSize || currentStock) {
+                // If filters were active, they will be reapplied by loadProducts()
+                // Try to find and select the edited/added product
+                setTimeout(() => {
+                    const editedProductId = isEdit ? parseInt(productId) : result.product_id;
+                    highlightProductRow(editedProductId);
+                }, 100);
+            } else {
+                // No filters, just go to first page
+                currentPage = 1;
+                displayProducts();
+                setupPagination();
+                
+                // Highlight the edited/added product
+                setTimeout(() => {
+                    const editedProductId = isEdit ? parseInt(productId) : result.product_id;
+                    highlightProductRow(editedProductId);
+                }, 100);
+            }
+            
+            showToast(isEdit ? 'Product updated successfully!' : 'Product added successfully!', 'success');
+        } else {
+            throw new Error(result.error || 'Failed to save product');
+        }
+    } catch (error) {
+        console.error('Error saving product:', error);
+        showToast('Error saving product: ' + error.message, 'error');
+    }
+}
+
+// Highlight a product row after edit/add
+function highlightProductRow(productId) {
+    const rows = document.querySelectorAll('#productsTableBody tr');
+    rows.forEach(row => {
+        const editButton = row.querySelector('button[onclick*="editProduct"]');
+        if (editButton) {
+            const match = editButton.getAttribute('onclick').match(/editProduct\((\d+)\)/);
+            if (match && parseInt(match[1]) === productId) {
+                row.style.backgroundColor = '#d4edda'; // Light green background
+                row.style.transition = 'background-color 2s ease';
+                
+                // Scroll to the row
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Remove highlight after 3 seconds
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 3000);
+            }
+        }
+    });
+}
+
+// Delete product confirmation
+function deleteProduct(productId, productName) {
+    productToDelete = productId;
+    document.getElementById('deleteProductName').textContent = productName;
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteProductModal'));
+    modal.show();
+}
+
+// Confirm and execute deletion
+async function confirmProductDelete() {
+    if (!productToDelete) return;
+    
+    try {
+        const response = await fetch(`/admin/api/products/${productToDelete}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteProductModal'));
+            modal.hide();
+            
+            // Save current filter state before reloading
+            const currentSearch = document.getElementById('searchInput').value;
+            const currentType = document.getElementById('typeFilter').value;
+            const currentSize = document.getElementById('sizeFilter').value;
+            const currentStock = document.getElementById('stockFilter').value;
+            
+            await loadProducts(); // Reload the product list
+            
+            showToast('Product deleted successfully!', 'success');
+        } else {
+            throw new Error(result.error || 'Failed to delete product');
+            }
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        showToast('Error deleting product: ' + error.message, 'error');
+    } finally {
+        productToDelete = null;
+    }
 }

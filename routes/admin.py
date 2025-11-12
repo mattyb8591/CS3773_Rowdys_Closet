@@ -62,6 +62,114 @@ def dashboard():
 def user_list():
     return render_template("user-list.html")
 
+@admin_bp.route("/products")
+def product_list():
+    return render_template("items-list.html")
+
+@admin_bp.route("/discounts")
+def discount_list():
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM discount_codes")
+        discounts = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("admin-discounts.html", discounts=discounts)
+    return render_template("admin-discounts.html", discounts=[])
+
+@admin_bp.route("/discounts/new", methods=['GET', 'POST'])
+def new_discount():
+    if request.method == 'POST':
+        code = request.form.get('code')
+        discount_type = request.form.get('discount_type')
+        value = request.form.get('value')
+        min_purchase = request.form.get('min_purchase')
+        expiration_date = request.form.get('expiration_date')
+        
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO discount_codes (code, discount_type, value, min_purchase, expiration_date)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (code, discount_type, value, min_purchase or None, expiration_date or None))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return redirect(url_for('admin.discount_list'))
+    
+    return render_template("new-discount.html")
+
+@admin_bp.route("/orders")
+def order_list():
+    sort_by = request.args.get('sort', 'order_date')
+    order = request.args.get('order', 'desc')
+    
+    valid_sorts = ['order_date', 'total', 'customer_id']
+    valid_orders = ['asc', 'desc']
+    
+    if sort_by not in valid_sorts:
+        sort_by = 'order_date'
+    if order not in valid_orders:
+        order = 'desc'
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        
+        if sort_by == 'customer_id':
+            order_by = f"o.customer_id {order}"
+        else:
+            order_by = f"o.{sort_by} {order}"
+            
+        cursor.execute(f"""
+            SELECT o.order_id, o.total, o.discount_code, o.order_status, 
+                   o.order_date, o.customer_id, c.username,
+                   COUNT(cp.cart_product_id) as item_count
+            FROM orders o 
+            JOIN customers c ON o.customer_id = c.customer_id 
+            LEFT JOIN cart_products cp ON o.cart_product_id = cp.cart_product_id
+            GROUP BY o.order_id
+            ORDER BY {order_by}
+        """)
+        orders = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("admin-orders.html", orders=orders, sort_by=sort_by, order=order)
+    return render_template("admin-orders.html", orders=[])
+
+@admin_bp.route("/orders/<int:order_id>")
+def order_detail(order_id):
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        5
+        # Get order details
+        cursor.execute("""
+            SELECT o.*, c.username, c.email, c.phone_number
+            FROM orders o 
+            JOIN customers c ON o.customer_id = c.customer_id 
+            WHERE o.order_id = %s
+        """, (order_id,))
+        order = cursor.fetchone()
+        
+        # Get order items (from cart_products)
+        cursor.execute("""
+            SELECT cp.*, p.name, p.image_url, p.price
+            FROM cart_products cp 
+            JOIN products p ON cp.product_id = p.product_id 
+            WHERE cp.cart_product_id = %s
+        """, (order['cart_product_id'],))
+        items = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return render_template("order-detail.html", order=order, items=items)
+    return redirect(url_for('admin.order_list'))
+
+# API Routes for User Management
 @admin_bp.route("/api/users")
 def api_users():
     conn = get_db_connection()
@@ -125,8 +233,10 @@ def api_create_user():
     if conn:
         cursor = conn.cursor()
         try:
+            # Start transaction
             conn.start_transaction()
             
+            # First insert address if provided
             address_id = None
             if street_number and street_name and city and state_abrev and zip_code:
                 cursor.execute("""
@@ -135,12 +245,15 @@ def api_create_user():
                 """, (street_number, street_name, city, state_abrev, zip_code))
                 address_id = cursor.lastrowid
             
+            # Insert user
+            hashed_password = generate_password_hash(password)
             cursor.execute("""
-                INSERT INTO users (username, email, password, phone_number, address_id)
+                INSERT INTO users (username, email, password_hash, phone_number, address_id)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (username, email, password, phone_number, address_id))
+            """, (username, email, hashed_password, phone_number, address_id))
             user_id = cursor.lastrowid
             
+            # If user is admin, insert into admins table
             if user_role == 'Admin':
                 cursor.execute("INSERT INTO admins (user_id) VALUES (%s)", (user_id,))
             
@@ -184,26 +297,32 @@ def api_update_user(user_id):
         try:
             conn.start_transaction()
             
+            # Get current user data to find address_id
             cursor.execute("SELECT address_id FROM users WHERE user_id = %s", (user_id,))
             current_user = cursor.fetchone()
             current_address_id = current_user[0] if current_user else None
             
+            # Update or insert address
             if street_number and street_name and city and state_abrev and zip_code:
                 if current_address_id:
+                    # Update existing address
                     cursor.execute("""
                         UPDATE addresses 
                         SET street_number = %s, street_name = %s, city = %s, state_abrev = %s, zip_code = %s
                         WHERE address_id = %s
                     """, (street_number, street_name, city, state_abrev, zip_code, current_address_id))
                 else:
+                    # Insert new address
                     cursor.execute("""
                         INSERT INTO addresses (street_number, street_name, city, state_abrev, zip_code)
                         VALUES (%s, %s, %s, %s, %s)
                     """, (street_number, street_name, city, state_abrev, zip_code))
                     current_address_id = cursor.lastrowid
             else:
+                # No address provided, set to NULL
                 current_address_id = None
             
+            # Update user
             if password:
                 hashed_password = generate_password_hash(password)
                 cursor.execute("""
@@ -218,6 +337,7 @@ def api_update_user(user_id):
                     WHERE user_id = %s
                 """, (username, email, phone_number, current_address_id, user_id))
             
+            # Update admin status
             cursor.execute("DELETE FROM admins WHERE user_id = %s", (user_id,))
             if user_role == 'Admin':
                 cursor.execute("INSERT INTO admins (user_id) VALUES (%s)", (user_id,))
@@ -241,6 +361,7 @@ def api_update_user(user_id):
 
 @admin_bp.route("/api/users/<int:user_id>", methods=["DELETE"])
 def api_delete_user(user_id):
+    # Prevent admin from deleting themselves
     if user_id == session.get('user_id'):
         return jsonify({"error": "You cannot delete your own account"}), 400
     
@@ -250,14 +371,18 @@ def api_delete_user(user_id):
         try:
             conn.start_transaction()
             
+            # Get user's address_id before deletion
             cursor.execute("SELECT address_id FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
             address_id = user[0] if user else None
             
+            # Delete from admins table first (foreign key constraint)
             cursor.execute("DELETE FROM admins WHERE user_id = %s", (user_id,))
             
+            # Delete user
             cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
             
+            # Delete address if it exists and no other users are using it
             if address_id:
                 cursor.execute("SELECT COUNT(*) FROM users WHERE address_id = %s", (address_id,))
                 address_users = cursor.fetchone()[0]
@@ -281,52 +406,21 @@ def api_delete_user(user_id):
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Database connection failed"}), 500
 
-@admin_bp.route("/products")
-def product_list():
+# API Routes for Product Management
+@admin_bp.route("/api/products")
+def api_products():
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM products")
+        cursor.execute("SELECT * FROM products ORDER BY product_id DESC")
         products = cursor.fetchall()
         cursor.close()
         conn.close()
-        return render_template("admin-products.html", products=products)
-    return render_template("admin-products.html", products=[])
+        return jsonify(products)
+    return jsonify([])
 
-@admin_bp.route("/products/<int:product_id>/edit", methods=['GET', 'POST'])
-def edit_product(product_id):
-    if request.method == 'POST':
-        name = request.form.get('name')
-        description = request.form.get('description')
-        price = request.form.get('price')
-        stock_quantity = request.form.get('stock_quantity')
-        category = request.form.get('category')
-        image_url = request.form.get('image_url')
-        on_sale = 1 if request.form.get('on_sale') else 0
-        sale_price = request.form.get('sale_price')
-        
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            if on_sale and sale_price:
-                cursor.execute("""
-                    UPDATE products 
-                    SET name = %s, description = %s, price = %s, stock_quantity = %s, 
-                        category = %s, image_url = %s, on_sale = %s, sale_price = %s
-                    WHERE product_id = %s
-                """, (name, description, price, stock_quantity, category, image_url, on_sale, sale_price, product_id))
-            else:
-                cursor.execute("""
-                    UPDATE products 
-                    SET name = %s, description = %s, price = %s, stock_quantity = %s, 
-                        category = %s, image_url = %s, on_sale = %s, sale_price = NULL
-                    WHERE product_id = %s
-                """, (name, description, price, stock_quantity, category, image_url, on_sale, product_id))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('admin.product_list'))
-    
+@admin_bp.route("/api/products/<int:product_id>")
+def api_product_detail(product_id):
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor(dictionary=True)
@@ -334,129 +428,124 @@ def edit_product(product_id):
         product = cursor.fetchone()
         cursor.close()
         conn.close()
-        return render_template("edit-product.html", product=product)
-    return redirect(url_for('admin.product_list'))
+        if product:
+            return jsonify(product)
+    return jsonify({"error": "Product not found"}), 404
 
-@admin_bp.route("/products/new", methods=['GET', 'POST'])
-def new_product():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        description = request.form.get('description')
-        price = request.form.get('price')
-        stock_quantity = request.form.get('stock_quantity')
-        category = request.form.get('category')
-        image_url = request.form.get('image_url')
-        
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO products (name, description, price, stock_quantity, category, image_url)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (name, description, price, stock_quantity, category, image_url))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('admin.product_list'))
+@admin_bp.route("/api/products", methods=["POST"])
+def api_create_product():
+    data = request.json
+    name = data.get('name')
+    description = data.get('description')
+    price = data.get('price')
+    size = data.get('size')  # Can be 'Small', 'Medium', 'Large', or None for "One Size"
+    stock = data.get('stock')
+    type = data.get('type')
+    img_file_path = data.get('img_file_path')
     
-    return render_template("new-product.html")
-
-@admin_bp.route("/discounts")
-def discount_list():
+    if not name or not type or price is None or stock is None:
+        return jsonify({"error": "Name, type, price, and stock are required"}), 400
+    
+    # Check for duplicate product
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM discount_codes")
-        discounts = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return render_template("admin-discounts.html", discounts=discounts)
-    return render_template("admin-discounts.html", discounts=[])
-
-@admin_bp.route("/discounts/new", methods=['GET', 'POST'])
-def new_discount():
-    if request.method == 'POST':
-        code = request.form.get('code')
-        discount_type = request.form.get('discount_type')
-        value = request.form.get('value')
-        min_purchase = request.form.get('min_purchase')
-        expiration_date = request.form.get('expiration_date')
-        
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
+        try:
+            # Check if product with same attributes already exists
             cursor.execute("""
-                INSERT INTO discount_codes (code, discount_type, value, min_purchase, expiration_date)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (code, discount_type, value, min_purchase or None, expiration_date or None))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return redirect(url_for('admin.discount_list'))
-    
-    return render_template("new-discount.html")
-
-@admin_bp.route("/orders")
-def order_list():
-    sort_by = request.args.get('sort', 'order_date')
-    order = request.args.get('order', 'desc')
-    
-    valid_sorts = ['order_date', 'total_amount', 'username']
-    valid_orders = ['asc', 'desc']
-    
-    if sort_by not in valid_sorts:
-        sort_by = 'order_date'
-    if order not in valid_orders:
-        order = 'desc'
-    
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor(dictionary=True)
-        
-        if sort_by == 'username':
-            order_by = f"u.username {order}"
-        else:
-            order_by = f"o.{sort_by} {order}"
+                SELECT COUNT(*) as count FROM products 
+                WHERE name = %s AND type = %s AND size <=> %s AND price = %s 
+                AND description <=> %s AND img_file_path <=> %s
+            """, (name, type, size, price, description, img_file_path))
+            duplicate_count = cursor.fetchone()['count']
             
-        cursor.execute(f"""
-            SELECT o.order_id, o.order_date, o.total_amount, u.username, 
-                   COUNT(oi.order_item_id) as item_count
-            FROM orders o 
-            JOIN users u ON o.user_id = u.user_id 
-            LEFT JOIN order_items oi ON o.order_id = oi.order_id
-            GROUP BY o.order_id
-            ORDER BY {order_by}
-        """)
-        orders = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return render_template("admin-orders.html", orders=orders, sort_by=sort_by, order=order)
-    return render_template("admin-orders.html", orders=[])
+            if duplicate_count > 0:
+                return jsonify({"error": "A product with these exact attributes already exists."}), 400
+            
+            # Insert new product if no duplicate
+            cursor.execute("""
+                INSERT INTO products (name, description, price, size, stock, type, img_file_path)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (name, description, price, size, stock, type, img_file_path))
+            conn.commit()
+            product_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True, "product_id": product_id})
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
 
-@admin_bp.route("/orders/<int:order_id>")
-def order_detail(order_id):
+@admin_bp.route("/api/products/<int:product_id>", methods=["PUT"])
+def api_update_product(product_id):
+    data = request.json
+    name = data.get('name')
+    description = data.get('description')
+    price = data.get('price')
+    size = data.get('size')  # Can be 'Small', 'Medium', 'Large', or None for "One Size"
+    stock = data.get('stock')
+    type = data.get('type')
+    img_file_path = data.get('img_file_path')
+    
+    if not name or not type or price is None or stock is None:
+        return jsonify({"error": "Name, type, price, and stock are required"}), 400
+    
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor(dictionary=True)
-        
-        cursor.execute("""
-            SELECT o.*, u.username, u.email, u.address
-            FROM orders o 
-            JOIN users u ON o.user_id = u.user_id 
-            WHERE o.order_id = %s
-        """, (order_id,))
-        order = cursor.fetchone()
-        
-        cursor.execute("""
-            SELECT oi.*, p.name, p.image_url
-            FROM order_items oi 
-            JOIN products p ON oi.product_id = p.product_id 
-            WHERE oi.order_id = %s
-        """, (order_id,))
-        items = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
-        
-        return render_template("order-detail.html", order=order, items=items)
-    return redirect(url_for('admin.order_list'))
+        try:
+            # Check for duplicate product (excluding current product)
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM products 
+                WHERE name = %s AND type = %s AND size <=> %s AND price = %s 
+                AND description <=> %s AND img_file_path <=> %s
+                AND product_id != %s
+            """, (name, type, size, price, description, img_file_path, product_id))
+            duplicate_count = cursor.fetchone()['count']
+            
+            if duplicate_count > 0:
+                return jsonify({"error": "A product with these exact attributes already exists."}), 400
+            
+            # Update product if no duplicate
+            cursor.execute("""
+                UPDATE products 
+                SET name = %s, description = %s, price = %s, size = %s, 
+                    stock = %s, type = %s, img_file_path = %s
+                WHERE product_id = %s
+            """, (name, description, price, size, stock, type, img_file_path, product_id))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True})
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/api/products/<int:product_id>", methods=["DELETE"])
+def api_delete_product(product_id):
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM products WHERE product_id = %s", (product_id,))
+            conn.commit()
+            affected_rows = cursor.rowcount
+            cursor.close()
+            conn.close()
+            
+            if affected_rows > 0:
+                return jsonify({"success": True})
+            else:
+                return jsonify({"error": "Product not found"}), 404
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
