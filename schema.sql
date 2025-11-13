@@ -137,8 +137,17 @@ ALTER TABLE products
 ADD COLUMN original_price DECIMAL(10,2) NULL,
 ADD COLUMN discount DECIMAL(5,2) NULL DEFAULT 0;
 
--- Update existing products to set original_price equal to price
 UPDATE products SET original_price = price WHERE original_price IS NULL;
 
--- Make original_price NOT NULL after populating
 ALTER TABLE products MODIFY COLUMN original_price DECIMAL(10,2) NOT NULL;
+
+CREATE TABLE IF NOT EXISTS discount_codes (
+    discount_id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    discount_type ENUM('percentage', 'fixed') NOT NULL DEFAULT 'percentage',
+    value DECIMAL(10,2) NOT NULL,
+    min_purchase DECIMAL(10,2) DEFAULT 0,
+    expiration_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -75,8 +75,8 @@ def discount_list():
         discounts = cursor.fetchall()
         cursor.close()
         conn.close()
-        return render_template("admin-discounts.html", discounts=discounts)
-    return render_template("admin-discounts.html", discounts=[])
+        return render_template("discount-codes.html", discounts=discounts)
+    return render_template("discount-codes.html", discounts=[])
 
 @admin_bp.route("/discounts/new", methods=['GET', 'POST'])
 def new_discount():
@@ -100,74 +100,6 @@ def new_discount():
             return redirect(url_for('admin.discount_list'))
     
     return render_template("new-discount.html")
-
-@admin_bp.route("/orders")
-def order_list():
-    sort_by = request.args.get('sort', 'order_date')
-    order = request.args.get('order', 'desc')
-    
-    valid_sorts = ['order_date', 'total', 'customer_id']
-    valid_orders = ['asc', 'desc']
-    
-    if sort_by not in valid_sorts:
-        sort_by = 'order_date'
-    if order not in valid_orders:
-        order = 'desc'
-    
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor(dictionary=True)
-        
-        if sort_by == 'customer_id':
-            order_by = f"o.customer_id {order}"
-        else:
-            order_by = f"o.{sort_by} {order}"
-            
-        cursor.execute(f"""
-            SELECT o.order_id, o.total, o.discount_code, o.order_status, 
-                   o.order_date, o.customer_id, c.username,
-                   COUNT(cp.cart_product_id) as item_count
-            FROM orders o 
-            JOIN customers c ON o.customer_id = c.customer_id 
-            LEFT JOIN cart_products cp ON o.cart_product_id = cp.cart_product_id
-            GROUP BY o.order_id
-            ORDER BY {order_by}
-        """)
-        orders = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return render_template("admin-orders.html", orders=orders, sort_by=sort_by, order=order)
-    return render_template("admin-orders.html", orders=[])
-
-@admin_bp.route("/orders/<int:order_id>")
-def order_detail(order_id):
-    conn = get_db_connection()
-    if conn:
-        cursor = conn.cursor(dictionary=True)
-        5
-        # Get order details
-        cursor.execute("""
-            SELECT o.*, c.username, c.email, c.phone_number
-            FROM orders o 
-            JOIN customers c ON o.customer_id = c.customer_id 
-            WHERE o.order_id = %s
-        """, (order_id,))
-        order = cursor.fetchone()
-        
-        # Get order items (from cart_products)
-        cursor.execute("""
-            SELECT cp.*, p.name, p.image_url, p.price
-            FROM cart_products cp 
-            JOIN products p ON cp.product_id = p.product_id 
-            WHERE cp.cart_product_id = %s
-        """, (order['cart_product_id'],))
-        items = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
-        
-        return render_template("order-detail.html", order=order, items=items)
-    return redirect(url_for('admin.order_list'))
 
 # API Routes for User Management
 @admin_bp.route("/api/users")
@@ -585,6 +517,147 @@ def api_delete_product(product_id):
                 return jsonify({"success": True})
             else:
                 return jsonify({"error": "Product not found"}), 404
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/api/discounts")
+def api_discounts():
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM discount_codes 
+            ORDER BY created_at DESC
+        """)
+        discounts = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(discounts)
+    return jsonify([])
+
+@admin_bp.route("/api/discounts/<int:discount_id>")
+def api_discount_detail(discount_id):
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM discount_codes WHERE discount_id = %s", (discount_id,))
+        discount = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if discount:
+            return jsonify(discount)
+    return jsonify({"error": "Discount code not found"}), 404
+
+@admin_bp.route("/api/discounts", methods=["POST"])
+def api_create_discount():
+    data = request.json
+    code = data.get('code')
+    discount_type = data.get('discount_type', 'percentage')
+    value = data.get('value')
+    min_purchase = data.get('min_purchase', 0)
+    expiration_date = data.get('expiration_date')
+    is_active = data.get('is_active', True)
+    
+    if not code or not value:
+        return jsonify({"error": "Code and value are required"}), 400
+    
+    # Validate discount value based on type
+    if discount_type == 'percentage' and (value < 0 or value > 100):
+        return jsonify({"error": "Percentage discount must be between 0 and 100"}), 400
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO discount_codes (code, discount_type, value, min_purchase, expiration_date, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (code, discount_type, value, min_purchase or 0, expiration_date or None, is_active))
+            conn.commit()
+            discount_id = cursor.lastrowid
+            cursor.close()
+            conn.close()
+            return jsonify({"success": True, "discount_id": discount_id})
+        except mysql.connector.IntegrityError:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Discount code already exists"}), 400
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/api/discounts/<int:discount_id>", methods=["PUT"])
+def api_update_discount(discount_id):
+    data = request.json
+    code = data.get('code')
+    discount_type = data.get('discount_type', 'percentage')
+    value = data.get('value')
+    min_purchase = data.get('min_purchase', 0)
+    expiration_date = data.get('expiration_date')
+    is_active = data.get('is_active', True)
+    
+    if not code or not value:
+        return jsonify({"error": "Code and value are required"}), 400
+    
+    # Validate discount value based on type
+    if discount_type == 'percentage' and (value < 0 or value > 100):
+        return jsonify({"error": "Percentage discount must be between 0 and 100"}), 400
+    
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE discount_codes 
+                SET code = %s, discount_type = %s, value = %s, min_purchase = %s, 
+                    expiration_date = %s, is_active = %s
+                WHERE discount_id = %s
+            """, (code, discount_type, value, min_purchase or 0, expiration_date or None, is_active, discount_id))
+            conn.commit()
+            affected_rows = cursor.rowcount
+            cursor.close()
+            conn.close()
+            
+            if affected_rows > 0:
+                return jsonify({"success": True})
+            else:
+                return jsonify({"error": "Discount code not found"}), 404
+        except mysql.connector.IntegrityError:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Discount code already exists"}), 400
+        except Error as e:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/api/discounts/<int:discount_id>", methods=["DELETE"])
+def api_delete_discount(discount_id):
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM discount_codes WHERE discount_id = %s", (discount_id,))
+            conn.commit()
+            affected_rows = cursor.rowcount
+            cursor.close()
+            conn.close()
+            
+            if affected_rows > 0:
+                return jsonify({"success": True})
+            else:
+                return jsonify({"error": "Discount code not found"}), 404
         except Error as e:
             conn.rollback()
             cursor.close()
