@@ -6,6 +6,7 @@ from mysql.connector import Error
 import os
 import json
 from datetime import datetime, timedelta
+from flask_apscheduler import APScheduler
 
 from routes.signup import signup_bp
 from routes.login import login_bp
@@ -18,6 +19,7 @@ from routes.admin import admin_bp
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=7)
+
 
 def get_db_connection():
     try:
@@ -33,6 +35,7 @@ def get_db_connection():
         return None
 
 app.get_db_connection = get_db_connection
+
 
 class ServerSideSession(CallbackDict, SessionMixin):
     """A dictionary-like object representing the session data."""
@@ -72,8 +75,6 @@ class MySqlSessionInterface(SessionInterface):
 
         cursor = conn.cursor(dictionary=True)
         try:
-            cursor.execute(f"DELETE FROM {self.table_name} WHERE expiry <= NOW()")
-            conn.commit()
             
             cursor.execute(
                 f"SELECT data, expiry, is_permanent FROM {self.table_name} WHERE sid = %s", 
@@ -105,10 +106,8 @@ class MySqlSessionInterface(SessionInterface):
         secure = self.get_cookie_secure(app)
         expires = self.get_expiration_time(app, session)
 
-        # Use the config value to retrieve the cookie name
         session_cookie_name = app.config.get('SESSION_COOKIE_NAME') or 'session'
 
-        # Set the small, 32-character SID cookie
         response.set_cookie(
             session_cookie_name,
             session.sid, 
@@ -159,6 +158,35 @@ class MySqlSessionInterface(SessionInterface):
 
 app.session_interface = MySqlSessionInterface(app, get_db_connection)
 
+def cleanup_expired_sessions(app):
+    """Runs the cleanup query using the app context."""
+    with app.app_context():
+        conn = app.get_db_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM sessions WHERE expiry <= NOW()")
+                conn.commit()
+                app.logger.info(f"Cleaned up {cursor.rowcount} expired sessions.")
+            except Exception as e:
+                app.logger.error(f"Session cleanup failed: {e}")
+            finally:
+                cursor.close()
+                conn.close()
+
+scheduler = APScheduler()
+scheduler.init_app(app)
+
+scheduler.add_job(
+    id='session_cleanup_job',
+    func=cleanup_expired_sessions,
+    args=[app],
+    trigger='interval',
+    hours=1 
+)
+
+scheduler.start()
+
 
 app.register_blueprint(signup_bp, url_prefix="/signup")
 app.register_blueprint(login_bp, url_prefix="/")
@@ -173,6 +201,7 @@ app.register_blueprint(admin_bp, url_prefix="/admin")
 def close_db(error):
     if hasattr(g, 'db_connection'):
         g.db_connection.close()
+
 
 @app.route("/")
 def index():
