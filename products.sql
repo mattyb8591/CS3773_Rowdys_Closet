@@ -87,8 +87,7 @@ UPDATE products
 SET stock = 0
 WHERE name = "UTSA Roadrunnner Head Hoodie";
 
-
-
+SELECT * FROM products WHERE name LIKE 'UTSA%' or description LIKE'UTSA%';
 
 
 

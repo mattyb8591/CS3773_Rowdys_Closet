@@ -204,7 +204,9 @@ async function searchRequest(searchText, searchForm){
     //GET results from '/home/searchrequest'
     const searchResults = getSearchResults();
     console.log(searchResults);
-    //Change dom based on the request 
+    //Change dom based on the request
+
+    
 }
 
 async function getSearchResults(){

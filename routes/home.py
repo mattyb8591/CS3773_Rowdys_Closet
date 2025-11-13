@@ -5,6 +5,8 @@ from werkzeug.security import check_password_hash
 
 home_bp = Blueprint("home", __name__, template_folder="templates", static_folder="static")
 
+search_request_share = {}
+
 def load_products():
     from app import get_db_connection
     db = get_db_connection()
@@ -93,9 +95,6 @@ def debug_products():
 @home_bp.route("/searchrequest", methods=["POST", "GET"])
 def get_search():
 
-    from app import get_db_connection
-    db = get_db_connection()
-
     #get the search POST request from home.js
     if request.method == "POST":
 
@@ -107,7 +106,9 @@ def get_search():
         search_request = data["search_data"]
         print(search_request)
 
-        return redirect(url_for(('home.result_search'), jsondata=search_request))
+        search_request_share['value'] = data
+
+        return "successful POST"
 
 @home_bp.route("/searchresult", methods=["GET"])
 def result_search():
@@ -117,20 +118,22 @@ def result_search():
         from app import get_db_connection
         db = get_db_connection()
         cursor = db.cursor()
-
-        data = request.args.get('jsondata')
+        
+        data = search_request_share.get('value')
         print(data)
-        #search_request = data["search_data"]
-        #print(search_request)
+
+        search_value = data['search_data']
+        search_wildcard = f"%{search_value}%"
 
         print("Searching for the desired products based on the searchbar input")
-        cursor.execute("SELECT * FROM products WHERE name = %s OR type = %s OR description = %s", (data, data, data))
-        found_products = cursor.fetchone()
+        cursor.execute("SELECT price, name, type FROM products WHERE name LIKE %s OR description LIKE %s", (search_wildcard, search_wildcard))
+        found_products = cursor.fetchall()
         print(found_products)
 
         if found_products is None:
             found_products = "SEARCH ERROR: No Products Match this Description, Type, or Name"
-        print(found_products)
+        print(jsonify(found_products))
+
         cursor.close()
 
         return jsonify(found_products)
