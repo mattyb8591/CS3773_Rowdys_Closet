@@ -1,34 +1,150 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{{ item.name }} — Rowdy's Closet</title>
-    <link rel="stylesheet" href="/static/css/style.css" />
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>UTSA Shop</title>
+        <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
+        rel="stylesheet" 
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
+        crossorigin="anonymous"
+      >
+        <link rel="stylesheet" href="../css/item.css">
+      </head>
+      
 <body>
-    <main class="container">
-        <a href="{{ url_for('home.index') }}">← Back to home</a>
-        <div class="item-detail">
-            {% if item.img_file_path %}
-                <img src="{{ item.img_file_path }}" alt="{{ item.name }}" onerror="this.style.display='none'">
-            {% endif %}
-            <h1>{{ item.name }}</h1>
-            <p class="price">${{ '%.2f'|format(item.price) }}</p>
-            <p>Type: {{ item.type }}</p>
-            <p>Stock: {{ item.stock }}</p>
-            <p>{{ item.description }}</p>
-            <form id="sizeSelect" method="post">
-                <label for="sizeDropdown">Select a size:</label>
-                <select id="sizeDropdown" name="sizeDropdown">
-                    {% for item in options %}
-                    <option value="{{ item }}">{{ item }}</option>
-                    {% endfor %}
+
+
+    <header>
+        <div class="nav-bar">
+          <div class="nav-inner">
+            <div class="nav-left">
+              <img src="..\img\utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
+            </div>
+            <ul class="nav-links">
+              <li><a href="home.html">Home</a></li>
+              <li><a href="cart.html" class="active">Checkout</a></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+
+    <main class="product-container">
+        <div class="product-image">
+            <img src="./img/utsa-hoodie.png" alt="Premium UTSA Hoodie">
+        </div>
+
+        <div class="product-details">
+            <div class="product-header">
+                <h2>Premium UTSA Hoodie</h2>
+            </div>
+
+            <div class="pricing">
+                <span class="price">$59.99</span>
+            </div>
+
+            <div class="description">
+                <p>Experience ultimate comfort with our Premium UTSA Hoodie. Featuring the official university colors and logo, this high-quality hoodie is perfect for students, alumni, and supporters. Made from soft, durable cotton blend fabric with a spacious kangaroo pocket and adjustable drawstrings.</p>
+                <ul style="margin-top: 1rem; margin-left: 1.5rem; color: #555;">
+                </ul>
+            </div>
+
+            <!-- updated size selector to only show S, M, L -->
+            <div class="form-group">
+                <label for="size">Size:</label>
+                <select id="size">
+                    <option value="">Select Size</option>
+                    <option value="s">S</option>
+                    <option value="m">M</option>
+                    <option value="l">L</option>
                 </select>
-                <button type="submit">Add to Cart</button>
-            </form>
-            <!-- add an Add to Cart form/button here if desired -->
+            </div>
+
+
+            <!-- added stock quantity display -->
+            <div class="stock-status" id="stockStatus">
+                <span class="stock-label">In Stock:</span>
+                <span class="stock-qty" id="stockQty">45 items</span>
+            </div>
+
+            <!-- added sold out message (hidden by default) -->
+            <div class="sold-out-message" id="soldOutMessage" style="display: none;">
+                <span>Sold Out</span>
+            </div>
+
+            <div class="quantity-section">
+                <label for="quantity">Quantity:</label>
+                <div class="quantity-selector">
+                    <button class="quantity-btn" id="decrease-qty">−</button>
+                    <input type="number" id="quantity" value="1" min="1" max="10">
+                    <button class="quantity-btn" id="increase-qty">+</button>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="add-to-cart-btn">Add to Cart</button>
+            </div>
         </div>
     </main>
+
+    <script>
+        let stockQuantity = 45; // Set initial stock quantity
+
+        const decreaseBtn = document.getElementById('decrease-qty');
+        const increaseBtn = document.getElementById('increase-qty');
+        const quantityInput = document.getElementById('quantity');
+        const addToCartBtn = document.querySelector('.add-to-cart-btn');
+        const stockStatus = document.getElementById('stockStatus');
+        const soldOutMessage = document.getElementById('soldOutMessage');
+
+        function updateStockDisplay() {
+            if (stockQuantity === 0) {
+                stockStatus.style.display = 'none';
+                soldOutMessage.style.display = 'block';
+                addToCartBtn.disabled = true;
+                decreaseBtn.disabled = true;
+                increaseBtn.disabled = true;
+                quantityInput.disabled = true;
+            } else {
+                stockStatus.style.display = 'block';
+                soldOutMessage.style.display = 'none';
+                addToCartBtn.disabled = false;
+                decreaseBtn.disabled = false;
+                increaseBtn.disabled = false;
+                quantityInput.disabled = false;
+                document.getElementById('stockQty').textContent = stockQuantity + ' item' + (stockQuantity === 1 ? '' : 's');
+            }
+        }
+
+        updateStockDisplay();
+
+        decreaseBtn.addEventListener('click', () => {
+            const current = parseInt(quantityInput.value);
+            if (current > 1) {
+                quantityInput.value = current - 1;
+            }
+        });
+
+        increaseBtn.addEventListener('click', () => {
+            const current = parseInt(quantityInput.value);
+            if (current < 10) {
+                quantityInput.value = current + 1;
+            }
+        });
+
+        addToCartBtn.addEventListener('click', () => {
+            const size = document.getElementById('size').value;
+            const color = document.getElementById('color').value;
+            const quantity = document.getElementById('quantity').value;
+
+            if (!size || !color) {
+                alert('Please select size and color');
+                return;
+            }
+
+            alert(`Added ${quantity} item(s) to cart!\nSize: ${size}\nColor: ${color}`);
+        });
+    </script>
 </body>
 </html>
