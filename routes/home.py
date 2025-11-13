@@ -71,6 +71,9 @@ def load_products():
 @home_bp.route("/", methods=["GET"])
 def index():
 
+    if session["isAdmin"]:
+        return redirect(url_for("admin.index"))
+        
     products_by_type = load_products()
     return render_template("home.html", products_by_type=products_by_type)
 
