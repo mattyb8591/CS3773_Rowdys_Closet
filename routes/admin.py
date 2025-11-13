@@ -432,21 +432,30 @@ def api_product_detail(product_id):
             return jsonify(product)
     return jsonify({"error": "Product not found"}), 404
 
+# In admin.py - Update the product creation and update endpoints
+
 @admin_bp.route("/api/products", methods=["POST"])
 def api_create_product():
     data = request.json
     name = data.get('name')
     description = data.get('description')
-    price = data.get('price')
-    size = data.get('size')  # Can be 'Small', 'Medium', 'Large', or None for "One Size"
+    original_price = data.get('original_price')
+    discount = data.get('discount', 0)
+    size = data.get('size')
     stock = data.get('stock')
     type = data.get('type')
     img_file_path = data.get('img_file_path')
     
-    if not name or not type or price is None or stock is None:
-        return jsonify({"error": "Name, type, price, and stock are required"}), 400
+    if not name or not type or original_price is None or stock is None:
+        return jsonify({"error": "Name, type, original price, and stock are required"}), 400
     
-    # Check for duplicate product
+    # Validate discount range
+    if discount < 0 or discount > 100:
+        return jsonify({"error": "Discount must be between 0 and 100 percent"}), 400
+    
+    # Calculate final price
+    final_price = original_price * (1 - discount / 100)
+    
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor(dictionary=True)
@@ -454,19 +463,27 @@ def api_create_product():
             # Check if product with same attributes already exists
             cursor.execute("""
                 SELECT COUNT(*) as count FROM products 
-                WHERE name = %s AND type = %s AND size <=> %s AND price = %s 
-                AND description <=> %s AND img_file_path <=> %s
-            """, (name, type, size, price, description, img_file_path))
+                WHERE name = %s AND type = %s AND size <=> %s AND original_price = %s 
+                AND discount = %s AND description <=> %s AND img_file_path <=> %s
+            """, (name, type, size, original_price, discount, description, img_file_path))
             duplicate_count = cursor.fetchone()['count']
             
             if duplicate_count > 0:
                 return jsonify({"error": "A product with these exact attributes already exists."}), 400
             
-            # Insert new product if no duplicate
+            # Apply common attributes to all sizes of the same product (EXCEPT stock and size)
             cursor.execute("""
-                INSERT INTO products (name, description, price, size, stock, type, img_file_path)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (name, description, price, size, stock, type, img_file_path))
+                UPDATE products 
+                SET description = %s, original_price = %s, discount = %s, 
+                    price = original_price * (1 - %s / 100), type = %s, img_file_path = %s
+                WHERE name = %s AND type = %s AND img_file_path <=> %s
+            """, (description, original_price, discount, discount, type, img_file_path, name, type, img_file_path))
+            
+            # Insert new product with calculated price
+            cursor.execute("""
+                INSERT INTO products (name, description, original_price, discount, price, size, stock, type, img_file_path)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (name, description, original_price, discount, final_price, size, stock, type, img_file_path))
             conn.commit()
             product_id = cursor.lastrowid
             cursor.close()
@@ -484,38 +501,62 @@ def api_update_product(product_id):
     data = request.json
     name = data.get('name')
     description = data.get('description')
-    price = data.get('price')
-    size = data.get('size')  # Can be 'Small', 'Medium', 'Large', or None for "One Size"
+    original_price = data.get('original_price')
+    discount = data.get('discount', 0)
+    size = data.get('size')
     stock = data.get('stock')
     type = data.get('type')
     img_file_path = data.get('img_file_path')
     
-    if not name or not type or price is None or stock is None:
-        return jsonify({"error": "Name, type, price, and stock are required"}), 400
+    if not name or not type or original_price is None or stock is None:
+        return jsonify({"error": "Name, type, original price, and stock are required"}), 400
+    
+    # Validate discount range
+    if discount < 0 or discount > 100:
+        return jsonify({"error": "Discount must be between 0 and 100 percent"}), 400
+    
+    # Calculate final price
+    final_price = original_price * (1 - discount / 100)
     
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor(dictionary=True)
         try:
+            # Get current product data to identify product group
+            cursor.execute("SELECT * FROM products WHERE product_id = %s", (product_id,))
+            current_product = cursor.fetchone()
+            
+            if not current_product:
+                return jsonify({"error": "Product not found"}), 404
+            
             # Check for duplicate product (excluding current product)
             cursor.execute("""
                 SELECT COUNT(*) as count FROM products 
-                WHERE name = %s AND type = %s AND size <=> %s AND price = %s 
-                AND description <=> %s AND img_file_path <=> %s
+                WHERE name = %s AND type = %s AND size <=> %s AND original_price = %s 
+                AND discount = %s AND description <=> %s AND img_file_path <=> %s
                 AND product_id != %s
-            """, (name, type, size, price, description, img_file_path, product_id))
+            """, (name, type, size, original_price, discount, description, img_file_path, product_id))
             duplicate_count = cursor.fetchone()['count']
             
             if duplicate_count > 0:
                 return jsonify({"error": "A product with these exact attributes already exists."}), 400
             
-            # Update product if no duplicate
+            # Apply common attributes to all sizes of the same product (EXCEPT stock and size)
             cursor.execute("""
                 UPDATE products 
-                SET name = %s, description = %s, price = %s, size = %s, 
-                    stock = %s, type = %s, img_file_path = %s
+                SET name = %s, description = %s, original_price = %s, discount = %s, 
+                    price = original_price * (1 - %s / 100), type = %s, img_file_path = %s
+                WHERE name = %s AND type = %s AND img_file_path <=> %s
+            """, (name, description, original_price, discount, discount, type, img_file_path, 
+                  current_product['name'], current_product['type'], current_product['img_file_path']))
+            
+            # Now update the current product's specific attributes (size and stock)
+            cursor.execute("""
+                UPDATE products 
+                SET size = %s, stock = %s
                 WHERE product_id = %s
-            """, (name, description, price, size, stock, type, img_file_path, product_id))
+            """, (size, stock, product_id))
+            
             conn.commit()
             cursor.close()
             conn.close()
@@ -526,6 +567,7 @@ def api_update_product(product_id):
             conn.close()
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Database connection failed"}), 500
+
 
 @admin_bp.route("/api/products/<int:product_id>", methods=["DELETE"])
 def api_delete_product(product_id):

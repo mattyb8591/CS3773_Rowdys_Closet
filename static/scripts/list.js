@@ -30,6 +30,7 @@ function resetProductFilters() {
     document.getElementById('typeFilter').value = '';
     document.getElementById('sizeFilter').value = '';
     document.getElementById('stockFilter').value = '';
+    document.getElementById('saleFilter').value = '';
     filteredProducts = [...allProducts];
     currentPage = 1;
     displayProducts();
@@ -280,7 +281,6 @@ function openAddUserModal() {
     const modal = new bootstrap.Modal(document.getElementById('userModal'));
     modal.show();
 }
-
 // Edit user
 async function editUser(userId) {
     try {
@@ -411,7 +411,28 @@ async function confirmDelete() {
 
 // Initialize product page
 function initializeProductPage() {
-    // No special initialization needed
+    // Add event listeners for price and discount calculations
+    document.getElementById('price').addEventListener('input', calculateSalePrice);
+    document.getElementById('discount').addEventListener('input', calculateSalePrice);
+}
+
+// Calculate and display sale price
+function calculateSalePrice() {
+    const price = parseFloat(document.getElementById('price').value) || 0;
+    const discount = parseFloat(document.getElementById('discount').value) || 0;
+    
+    const salePrice = price * (1 - discount / 100);
+    const savings = price - salePrice;
+    
+    document.getElementById('salePriceValue').textContent = salePrice.toFixed(2);
+    
+    if (discount > 0) {
+        document.getElementById('savingsAmount').textContent = `Save $${savings.toFixed(2)} (${discount}% off)`;
+        document.getElementById('salePriceDisplay').style.backgroundColor = '#d4edda';
+    } else {
+        document.getElementById('savingsAmount').textContent = 'No discount applied';
+        document.getElementById('salePriceDisplay').style.backgroundColor = '#f8f9fa';
+    }
 }
 
 // Load products from the server
@@ -428,7 +449,8 @@ async function loadProducts() {
             if (document.getElementById('searchInput').value || 
                 document.getElementById('typeFilter').value || 
                 document.getElementById('sizeFilter').value || 
-                document.getElementById('stockFilter').value) {
+                document.getElementById('stockFilter').value ||
+                document.getElementById('saleFilter').value) {
                 searchProducts(); // This will apply current filters
             } else {
                 filteredProducts = [...allProducts];
@@ -446,7 +468,7 @@ async function loadProducts() {
     }
 }
 
-// Display products in the table
+// Display products in the table - Updated to show database price
 function displayProducts() {
     const tableBody = document.getElementById('productsTableBody');
     const startIndex = (currentPage - 1) * usersPerPage;
@@ -456,7 +478,7 @@ function displayProducts() {
     if (productsToDisplay.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center py-4">
+                <td colspan="8" class="text-center py-4">
                     <div class="text-muted">
                         <i class="bi bi-box" style="font-size: 2rem;"></i>
                         <p class="mt-2">No products found</p>
@@ -467,7 +489,14 @@ function displayProducts() {
         return;
     }
 
-    tableBody.innerHTML = productsToDisplay.map(product => `
+    tableBody.innerHTML = productsToDisplay.map(product => {
+        // Use the actual price from database instead of calculating it
+        const discount = product.discount || 0;
+        const hasDiscount = discount > 0;
+        // Use the price field from database which should be the calculated sale price
+        const salePrice = product.price || product.original_price * (1 - discount / 100);
+        
+        return `
         <tr>
             <td>
                 ${product.img_file_path ? 
@@ -486,7 +515,20 @@ function displayProducts() {
                 <span class="badge bg-info size-badge">${escapeHtml(product.size || 'One Size')}</span>
             </td>
             <td>
-                $${parseFloat(product.price).toFixed(2)}
+                ${hasDiscount ? 
+                    `<div>
+                        <span class="price-original">$${parseFloat(product.original_price).toFixed(2)}</span>
+                        <br>
+                        <span class="price-sale">$${parseFloat(salePrice).toFixed(2)}</span>
+                    </div>` : 
+                    `$${parseFloat(product.original_price).toFixed(2)}`
+                }
+            </td>
+            <td>
+                ${hasDiscount ? 
+                    `<span class="badge bg-danger discount-badge">${discount}% OFF</span>` : 
+                    '<span class="text-muted">—</span>'
+                }
             </td>
             <td>
                 <span class="${product.stock === 0 ? 'stock-low' : product.stock < 10 ? 'stock-low' : 'stock-ok'}">
@@ -502,7 +544,8 @@ function displayProducts() {
                 </button>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Search products
@@ -511,6 +554,7 @@ function searchProducts() {
     const typeFilter = document.getElementById('typeFilter').value;
     const sizeFilter = document.getElementById('sizeFilter').value;
     const stockFilter = document.getElementById('stockFilter').value;
+    const saleFilter = document.getElementById('saleFilter').value;
     
     filteredProducts = allProducts.filter(product => {
         const matchesSearch = product.name.toLowerCase().includes(searchTerm) ||
@@ -526,8 +570,21 @@ function searchProducts() {
             (stockFilter === 'low' && product.stock < 10 && product.stock > 0) ||
             (stockFilter === 'out' && product.stock === 0) ||
             (stockFilter === 'in' && product.stock > 0);
+            
+        // FIXED: Handle sale filtering - properly check discount status
+        let matchesSale = true;
+        if (saleFilter) {
+            // Get discount value, treating NULL as 0 and ensuring it's a number
+            const discount = product.discount ? parseFloat(product.discount) : 0;
+            
+            if (saleFilter === 'sale') {
+                matchesSale = discount > 0;
+            } else if (saleFilter === 'regular') {
+                matchesSale = discount === 0;
+            }
+        }
         
-        return matchesSearch && matchesType && matchesSize && matchesStock;
+        return matchesSearch && matchesType && matchesSize && matchesStock && matchesSale;
     });
     
     currentPage = 1;
@@ -545,10 +602,14 @@ function openAddProductModal() {
     document.getElementById('productModalLabel').textContent = 'Add New Product';
     document.getElementById('productForm').reset();
     document.getElementById('productId').value = '';
+    document.getElementById('discount').value = '0';
+    
+    calculateSalePrice(); // Initialize sale price display
     
     const modal = new bootstrap.Modal(document.getElementById('productModal'));
     modal.show();
 }
+
 
 // Edit product
 async function editProduct(productId) {
@@ -562,7 +623,8 @@ async function editProduct(productId) {
             document.getElementById('name').value = product.name;
             document.getElementById('description').value = product.description || '';
             document.getElementById('type').value = product.type;
-            document.getElementById('price').value = product.price;
+            document.getElementById('price').value = product.original_price;
+            document.getElementById('discount').value = product.discount || '0';
             
             // Handle NULL size - convert to "One Size" for the form
             const displaySize = product.size || 'One Size';
@@ -570,6 +632,9 @@ async function editProduct(productId) {
             
             document.getElementById('stock').value = product.stock;
             document.getElementById('img_file_path').value = product.img_file_path || '';
+            
+            // Calculate and display sale price
+            calculateSalePrice();
             
             const modal = new bootstrap.Modal(document.getElementById('productModal'));
             modal.show();
@@ -590,17 +655,21 @@ function checkForDuplicateProduct(productData, currentProductId = null) {
             return false;
         }
         
+        // Handle NULL discounts (treat as 0 for comparison)
+        const productDiscount = product.discount || 0;
+        const newProductDiscount = productData.discount || 0;
+        
         // Compare all relevant fields
         return product.name === productData.name &&
                product.type === productData.type &&
                product.size === productData.size &&
-               parseFloat(product.price) === parseFloat(productData.price) &&
+               parseFloat(product.original_price) === parseFloat(productData.original_price) &&
+               parseFloat(productDiscount) === parseFloat(newProductDiscount) &&
                product.description === (productData.description || '') &&
                product.img_file_path === (productData.img_file_path || '');
     });
 }
 
-// Save product (add or update)
 async function saveProduct() {
     const form = document.getElementById('productForm');
     const formData = new FormData(form);
@@ -612,7 +681,8 @@ async function saveProduct() {
     }
     
     // Convert numeric fields
-    productData.price = parseFloat(productData.price);
+    productData.original_price = parseFloat(productData.price);
+    productData.discount = parseFloat(productData.discount) || 0;
     productData.stock = parseInt(productData.stock);
     
     // Handle empty strings for optional fields
@@ -623,8 +693,14 @@ async function saveProduct() {
     const isEdit = !!productId;
     
     // Validate required fields
-    if (!productData.name || !productData.type || !productData.price || productData.stock === '') {
-        showToast('Name, type, price, and stock are required.', 'error');
+    if (!productData.name || !productData.type || !productData.original_price || productData.stock === '') {
+        showToast('Name, type, original price, and stock are required.', 'error');
+        return;
+    }
+    
+    // Validate discount range
+    if (productData.discount < 0 || productData.discount > 100) {
+        showToast('Discount must be between 0 and 100 percent.', 'error');
         return;
     }
     
@@ -658,17 +734,21 @@ async function saveProduct() {
             const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
             modal.hide();
             
+            // Show success message indicating which changes were applied
+            let successMessage = isEdit ? 'Product updated successfully!' : 'Product added successfully!';
+            successMessage += ' Product details (name, description, price, discount, type, image) applied to all sizes. Stock updated only for this size.';
+            
             // Save current filter state before reloading
             const currentSearch = document.getElementById('searchInput').value;
             const currentType = document.getElementById('typeFilter').value;
             const currentSize = document.getElementById('sizeFilter').value;
             const currentStock = document.getElementById('stockFilter').value;
-            const currentPageBeforeReload = currentPage;
+            const currentSale = document.getElementById('saleFilter').value;
             
             await loadProducts(); // Reload the product list
             
             // Try to restore the previous page and selection
-            if (currentSearch || currentType || currentSize || currentStock) {
+            if (currentSearch || currentType || currentSize || currentStock || currentSale) {
                 // If filters were active, they will be reapplied by loadProducts()
                 // Try to find and select the edited/added product
                 setTimeout(() => {
@@ -688,7 +768,7 @@ async function saveProduct() {
                 }, 100);
             }
             
-            showToast(isEdit ? 'Product updated successfully!' : 'Product added successfully!', 'success');
+            showToast(successMessage, 'success');
         } else {
             throw new Error(result.error || 'Failed to save product');
         }
@@ -698,28 +778,7 @@ async function saveProduct() {
     }
 }
 
-// Highlight a product row after edit/add
-function highlightProductRow(productId) {
-    const rows = document.querySelectorAll('#productsTableBody tr');
-    rows.forEach(row => {
-        const editButton = row.querySelector('button[onclick*="editProduct"]');
-        if (editButton) {
-            const match = editButton.getAttribute('onclick').match(/editProduct\((\d+)\)/);
-            if (match && parseInt(match[1]) === productId) {
-                row.style.backgroundColor = '#d4edda'; // Light green background
-                row.style.transition = 'background-color 2s ease';
-                
-                // Scroll to the row
-                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                // Remove highlight after 3 seconds
-                setTimeout(() => {
-                    row.style.backgroundColor = '';
-                }, 3000);
-            }
-        }
-    });
-}
+
 
 // Delete product confirmation
 function deleteProduct(productId, productName) {
@@ -730,7 +789,7 @@ function deleteProduct(productId, productName) {
     modal.show();
 }
 
-// Confirm and execute deletion
+// Confirm and execute product deletion
 async function confirmProductDelete() {
     if (!productToDelete) return;
     
@@ -744,23 +803,33 @@ async function confirmProductDelete() {
         if (response.ok) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('deleteProductModal'));
             modal.hide();
-            
-            // Save current filter state before reloading
-            const currentSearch = document.getElementById('searchInput').value;
-            const currentType = document.getElementById('typeFilter').value;
-            const currentSize = document.getElementById('sizeFilter').value;
-            const currentStock = document.getElementById('stockFilter').value;
-            
             await loadProducts(); // Reload the product list
-            
             showToast('Product deleted successfully!', 'success');
         } else {
             throw new Error(result.error || 'Failed to delete product');
-            }
+        }
     } catch (error) {
         console.error('Error deleting product:', error);
         showToast('Error deleting product: ' + error.message, 'error');
     } finally {
         productToDelete = null;
     }
+}
+
+// Highlight a product row after edit/add (optional enhancement)
+function highlightProductRow(productId) {
+    const rows = document.querySelectorAll('#productsTableBody tr');
+    rows.forEach(row => {
+        // Remove any existing highlights
+        row.classList.remove('table-success');
+        
+        // Check if this row contains the product ID
+        const firstCell = row.querySelector('td:first-child');
+        if (firstCell && firstCell.textContent.includes(productId)) {
+            row.classList.add('table-success');
+            
+            // Scroll to the row if it's not visible
+            row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    });
 }

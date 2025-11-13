@@ -112,7 +112,7 @@ ALTER TABLE products
 MODIFY COLUMN size VARCHAR(10);
 
 ALTER TABLE products
-MODIFY COLUMN name VARCHAR(100);
+MODIFY COLUMN discount INT;
 
 SELECT * FROM users;
 
@@ -132,3 +132,13 @@ SELECT u.user_id,
     LEFT JOIN addresses a ON u.address_id = a.address_id
     LEFT JOIN admins ad ON u.user_id = ad.user_id
     ORDER BY u.user_id DESC;
+
+ALTER TABLE products 
+ADD COLUMN original_price DECIMAL(10,2) NULL,
+ADD COLUMN discount DECIMAL(5,2) NULL DEFAULT 0;
+
+-- Update existing products to set original_price equal to price
+UPDATE products SET original_price = price WHERE original_price IS NULL;
+
+-- Make original_price NOT NULL after populating
+ALTER TABLE products MODIFY COLUMN original_price DECIMAL(10,2) NOT NULL;
