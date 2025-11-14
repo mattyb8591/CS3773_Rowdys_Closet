@@ -669,3 +669,94 @@ def api_delete_discount(discount_id):
             conn.close()
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "Database connection failed"}), 500
+
+@admin_bp.route("/orders")
+def order_history():
+    return render_template("order-history.html")
+
+# API Routes for Order Management
+@admin_bp.route("/api/orders")
+def api_orders():
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                o.order_id,
+                o.total,
+                o.discount_code,
+                o.order_date,
+                o.customer_id,
+                u.username,
+                o.payment_id,
+                p.payment_type,
+                o.shipping_method
+            FROM orders o
+            LEFT JOIN customers c ON o.customer_id = c.customer_id
+            LEFT JOIN users u ON c.user_id = u.user_id
+            LEFT JOIN payments p ON o.payment_id = p.payment_id
+            ORDER BY o.order_date DESC
+        """)
+        orders = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(orders)
+    return jsonify([])
+
+@admin_bp.route("/api/orders/<int:order_id>")
+def api_order_detail(order_id):
+    conn = get_db_connection()
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get order basic information
+        cursor.execute("""
+            SELECT 
+                o.order_id,
+                o.total,
+                o.subtotal,
+                o.tax_amount,
+                o.shipping_cost,
+                o.discount_code,
+                o.order_status as status,
+                o.order_date,
+                o.customer_id,
+                u.username,
+                u.email,
+                u.phone_number,
+                o.payment_id,
+                p.payment_type,
+                o.shipping_method,
+                CONCAT(a.street_number, ' ', a.street_name, ', ', a.city, ', ', a.state_abrev, ' ', a.zip_code) as shipping_address
+            FROM orders o
+            LEFT JOIN customers c ON o.customer_id = c.customer_id
+            LEFT JOIN users u ON c.user_id = u.user_id
+            LEFT JOIN addresses a ON u.address_id = a.address_id
+            LEFT JOIN payments p ON o.payment_id = p.payment_id
+            WHERE o.order_id = %s
+        """, (order_id,))
+        order = cursor.fetchone()
+        
+        if order:
+            # Get order items
+            cursor.execute("""
+                SELECT 
+                    oi.product_id,
+                    p.name as product_name,
+                    p.size,
+                    oi.price,
+                    oi.quantity
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.product_id
+                WHERE oi.order_id = %s
+            """, (order_id,))
+            order_items = cursor.fetchall()
+            order['items'] = order_items
+        
+        cursor.close()
+        conn.close()
+        
+        if order:
+            return jsonify(order)
+    
+    return jsonify({"error": "Order not found"}), 404
