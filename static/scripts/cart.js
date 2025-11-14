@@ -43,7 +43,8 @@ function renderCartItems() {
                         <div class="item-info">
                             <h3 class="item-name">${item.name}</h3>
                             <p class="item-category">${item.category || 'No category'}</p>
-                            <button class="remove-button" onclick="removeItem(${item.id})">
+                            <p class="item-size">Size: ${item.size || 'N/A'}</p>
+                            <button class="remove-button" onclick="removeItem(${item.id}, '${item.size}')">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                                 </svg>
@@ -52,13 +53,13 @@ function renderCartItems() {
                         </div>
                     </div>
                     <div class="quantity-controls">
-                        <button class="quantity-button" onclick="updateQuantity(${item.id}, -1)">
+                        <button class="quantity-button" onclick="updateQuantity(${item.id}, '${item.size}', -1)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M5 12h14"/>
                             </svg>
                         </button>
                         <span class="quantity-value">${item.quantity}</span>
-                        <button class="quantity-button" onclick="updateQuantity(${item.id}, 1)">
+                        <button class="quantity-button" onclick="updateQuantity(${item.id}, '${item.size}', 1)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 5v14M5 12h14"/>
                             </svg>
@@ -75,7 +76,7 @@ function renderCartItems() {
     document.getElementById("summaryItemCount").textContent = cartItems.length
 }
   
-async function updateQuantity(id, change) {
+async function updateQuantity(id, size, change) {
     try {
         const response = await fetch('/cart/api/update-quantity', {
             method: 'POST',
@@ -84,6 +85,7 @@ async function updateQuantity(id, change) {
             },
             body: JSON.stringify({
                 product_id: id,
+                size: size,
                 change: change
             })
         });
@@ -92,11 +94,11 @@ async function updateQuantity(id, change) {
 
         if (response.ok && result.success) {
             // Update local cart data
-            const item = cartItems.find((item) => item.id === id);
+            const item = cartItems.find((item) => item.id === id && item.size === size);
             if (item) {
                 if (result.new_quantity === 0) {
                     // Remove item from local cart if quantity becomes 0
-                    cartItems = cartItems.filter((item) => item.id !== id);
+                    cartItems = cartItems.filter((item) => !(item.id === id && item.size === size));
                 } else {
                     item.quantity = result.new_quantity;
                 }
@@ -114,7 +116,7 @@ async function updateQuantity(id, change) {
     }
 }
   
-async function removeItem(id) {
+async function removeItem(id, size) {
     try {
         const response = await fetch('/cart/api/remove-item', {
             method: 'POST',
@@ -122,7 +124,8 @@ async function removeItem(id) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                product_id: id
+                product_id: id,
+                size: size
             })
         });
 
@@ -130,7 +133,7 @@ async function removeItem(id) {
 
         if (response.ok && result.success) {
             // Remove item from local cart
-            cartItems = cartItems.filter((item) => item.id !== id);
+            cartItems = cartItems.filter((item) => !(item.id === id && item.size === size));
             renderCartItems();
             updateSummary();
             showToast('Item removed from cart', 'success');

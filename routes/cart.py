@@ -35,7 +35,7 @@ def index():
         customer_id = customer_id['customer_id']
         print(f"Customer ID: {customer_id}")  # Debug log
         
-        # Get the current active cart for the customer (where customer_id is still associated)
+        # Get the current active cart for the customer
         cursor.execute("SELECT cart_id FROM carts WHERE customer_id = %s", (customer_id,))
         cart_id_data = cursor.fetchone()
 
@@ -47,27 +47,24 @@ def index():
             cart_id = cart_id_data['cart_id']
             print(f"Cart ID: {cart_id}")  # Debug log
             
-            # Debug: Check what's in cart_products
-            cursor.execute("SELECT * FROM cart_products WHERE cart_id = %s", (cart_id,))
-            raw_cart_items = cursor.fetchall()  # Consume all results
-            print(f"Raw cart products: {raw_cart_items}")  # Debug log
-            
+            # Updated query to include size from products table
             query = """ 
-            SELECT products.product_id as id, 
-            products.name as name, 
-            products.img_file_path as image, 
-            products.price as price, 
-            products.size as size, 
-            products.type as category,
-            COUNT(products.product_id) AS quantity
+            SELECT 
+                products.product_id as id, 
+                products.name as name, 
+                products.img_file_path as image, 
+                products.price as price, 
+                products.size as size,  -- Get size from products table
+                products.type as category,
+                COUNT(products.product_id) AS quantity
             FROM cart_products 
             INNER JOIN products ON cart_products.product_id = products.product_id 
             WHERE cart_products.cart_id = %s
-            GROUP BY products.product_id
+            GROUP BY products.product_id, products.size  -- Group by both product_id and size
             """
             cursor.execute(query,(cart_id,))
-            user_cart_items = cursor.fetchall()  # Consume all results
-            print(f"Processed cart items: {user_cart_items}")  # Debug log
+            user_cart_items = cursor.fetchall()
+            print(f"Processed cart items with sizes: {user_cart_items}")  # Debug log
         
         cart_items_json = json.dumps(user_cart_items)
         print(f"Cart items JSON: {cart_items_json}")  # Debug log
@@ -94,10 +91,11 @@ def update_quantity():
 
     data = request.json
     product_id = data.get('product_id')
+    size = data.get('size')  # Add size parameter
     change = data.get('change', 0)  # +1 for increment, -1 for decrement
     
-    if not product_id:
-        return jsonify({"error": "Product ID is required"}), 400
+    if not product_id or not size:
+        return jsonify({"error": "Product ID and size are required"}), 400
 
     cursor = db.cursor(dictionary=True, buffered=True)
     try:
@@ -122,33 +120,36 @@ def update_quantity():
             cart_id = cart['cart_id']
         
         if change > 0:
-            # Add item to cart
+            # Add item to cart - we don't store size in cart_products since it's in products table
             cursor.execute(
                 "INSERT INTO cart_products (cart_id, product_id) VALUES (%s, %s)",
                 (cart_id, product_id)
             )
         elif change < 0:
             # Remove one instance of the item
+            # Since size is in products table, we need to join to filter by size
             cursor.execute("""
                 DELETE FROM cart_products 
                 WHERE cart_product_id IN (
                     SELECT cart_product_id FROM (
-                        SELECT cart_product_id 
-                        FROM cart_products 
-                        WHERE cart_id = %s AND product_id = %s 
+                        SELECT cp.cart_product_id 
+                        FROM cart_products cp
+                        INNER JOIN products p ON cp.product_id = p.product_id
+                        WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
                         LIMIT 1
                     ) AS tmp
                 )
-            """, (cart_id, product_id))
+            """, (cart_id, product_id, size))
         
         db.commit()
         
-        # Get updated quantity for this product
+        # Get updated quantity for this product with specific size
         cursor.execute("""
             SELECT COUNT(*) as quantity 
-            FROM cart_products 
-            WHERE cart_id = %s AND product_id = %s
-        """, (cart_id, product_id))
+            FROM cart_products cp
+            INNER JOIN products p ON cp.product_id = p.product_id
+            WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
+        """, (cart_id, product_id, size))
         
         result = cursor.fetchone()
         new_quantity = result['quantity'] if result else 0
@@ -179,9 +180,10 @@ def remove_item():
 
     data = request.json
     product_id = data.get('product_id')
+    size = data.get('size')  # Add size parameter
     
-    if not product_id:
-        return jsonify({"error": "Product ID is required"}), 400
+    if not product_id or not size:
+        return jsonify({"error": "Product ID and size are required"}), 400
 
     cursor = db.cursor(dictionary=True, buffered=True)
     try:
@@ -202,11 +204,12 @@ def remove_item():
             
         cart_id = cart['cart_id']
         
-        # Remove all instances of this product from cart
-        cursor.execute(
-            "DELETE FROM cart_products WHERE cart_id = %s AND product_id = %s",
-            (cart_id, product_id)
-        )
+        # Remove all instances of this product with specific size from cart
+        cursor.execute("""
+            DELETE cp FROM cart_products cp
+            INNER JOIN products p ON cp.product_id = p.product_id
+            WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
+        """, (cart_id, product_id, size))
         
         db.commit()
         
