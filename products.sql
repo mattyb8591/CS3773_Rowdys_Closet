@@ -89,12 +89,10 @@ WHERE name = "UTSA Roadrunnner Head Hoodie";
 
 SELECT * FROM products WHERE name LIKE 'UTSA%' or description LIKE'UTSA%';
 
+SELECT * FROM prodcuts WHERE name LIKE 'UTSA%' or description LIKE'UTSA%' AND GROUP BY type;
 
 
-
-
-
-
+SELECT * FROM products GROUP BY type;
 
 
 

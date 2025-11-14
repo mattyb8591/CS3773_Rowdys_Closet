@@ -185,15 +185,16 @@ async function searchRequest(searchText, searchForm){
         body: JSON.stringify({search_data: searchText})
       });
 
-      const result = await response.json();
+      //const result = await response.json();
 
       if (response.ok) {
         
         searchForm.reset();
 
-        setTimeout(() => {
+        /*setTimeout(() => {
           window.location.href = "/"; 
-        }, 2000);
+        }, 2000);*/
+
       } else {
         console.log("Error with sending search request to home.py");
       }
@@ -202,16 +203,21 @@ async function searchRequest(searchText, searchForm){
     }
 
     //GET results from '/home/searchrequest'
-    const searchResults = getSearchResults();
+    let searchResults = await getSearchResults();
     console.log(searchResults);
     //Change dom based on the request
 
+    Object.keys(productsCache).forEach(k => delete productsCache[k]); // clear old values
+    Object.assign(productsCache, searchResults);    
+
+    //render the searched products
+    renderProducts();
     
 }
 
 async function getSearchResults(){
 
-    const request_data = null;
+    let request_data = null;
 
     const getResults = await fetch("/home/searchresult")
     .then(getResults => {
@@ -219,7 +225,6 @@ async function getSearchResults(){
             if (!getResults.ok) {
                 throw new Error(`HTTP error! status: ${getResults.status}`);
             }
-            console.log(getResults.json());
             return getResults.json();
     })
     .then(data => {

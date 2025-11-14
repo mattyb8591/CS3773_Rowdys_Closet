@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app, session, url_for
+from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app, session, url_for, json
 import os
 import mysql.connector
 from werkzeug.security import check_password_hash
@@ -66,6 +66,8 @@ def load_products():
     for product_type, products in products_by_type.items():
         product_names = [p['name'] for p in products]
     
+    #print(json.dumps(products_by_type, indent=4))
+
     return products_by_type
 
 @home_bp.route("/", methods=["GET"])
@@ -120,7 +122,7 @@ def result_search():
 
         from app import get_db_connection
         db = get_db_connection()
-        cursor = db.cursor()
+        cursor = db.cursor(dictionary=True)
         
         data = search_request_share.get('value')
         print(data)
@@ -129,14 +131,51 @@ def result_search():
         search_wildcard = f"%{search_value}%"
 
         print("Searching for the desired products based on the searchbar input")
-        cursor.execute("SELECT price, name, type FROM products WHERE name LIKE %s OR description LIKE %s", (search_wildcard, search_wildcard))
+        cursor.execute("SELECT * FROM products WHERE name LIKE %s OR description LIKE %s", (search_wildcard, search_wildcard))
         found_products = cursor.fetchall()
         print(found_products)
 
         if found_products is None:
-            found_products = "SEARCH ERROR: No Products Match this Description, Type, or Name"
-        print(jsonify(found_products))
+            found_products = "SEARCH ERROR: No Products Match this Description or Name"
+        #rint(json.dumps(found_products, indent=4))
 
         cursor.close()
 
-        return jsonify(found_products)
+
+        products = {}
+
+        for product in found_products:
+            product_name = product['name']
+
+            products[product_name] = {
+                'product_id': product['product_id'],
+                'name': product['name'],
+                'price': product['price'],
+                'type': product['type'],
+                'img_file_path': product['img_file_path'],
+                'description': product['description'],
+                'stock': product['stock']
+            }
+
+        unique_products_list = list(products.values())
+
+        products_by_type = {
+            'T-Shirts': [],
+            'Hoodies': [], 
+            'Jackets': [],
+            'Headwear': [],
+            'Bags': []
+        }
+        
+        for product in unique_products_list:
+            product_type = product['type']
+            if product_type in products_by_type:
+                products_by_type[product_type].append(product)
+        
+        #  debug output
+        for product_type, products in products_by_type.items():
+            product_names = [p['name'] for p in products]
+
+        print(json.dumps(products_by_type, indent=4))
+
+        return products_by_type
