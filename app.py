@@ -1,12 +1,14 @@
-from flask import Flask, g, jsonify, session, Response
+from flask import Flask, g, jsonify, session, Response, request
 from flask.sessions import SessionInterface, SessionMixin
 from werkzeug.datastructures import CallbackDict
 import mysql.connector
+from mysql.connector import pooling
 from mysql.connector import Error
 import os
 import json
 from datetime import datetime, timedelta
 from flask_apscheduler import APScheduler
+from flask_caching import Cache
 
 from routes.signup import signup_bp
 from routes.login import login_bp
@@ -20,18 +22,42 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.permanent_session_lifetime = timedelta(days=7)
 
+# Initialize caching
+cache = Cache(config={
+    'CACHE_TYPE': 'SimpleCache',
+    'CACHE_DEFAULT_TIMEOUT': 300  # 5 minutes
+})
+cache.init_app(app)
 
-def get_db_connection():
+# Connection pooling
+connection_pool = None
+
+def init_connection_pool():
+    global connection_pool
     try:
-        conn = mysql.connector.connect(
+        connection_pool = pooling.MySQLConnectionPool(
+            pool_name="app_pool",
+            pool_size=10,
+            pool_reset_session=True,
             host="20.120.180.6",
             user="rowdy",
             password="rowdyscloset",
-            database="rowdys_closet_db"
+            database="rowdys_closet_db",
+            autocommit=True
         )
-        return conn
+        print("Connection pool created successfully")
     except Error as e:
-        print(f"Error: {e}")
+        print(f"Error creating connection pool: {e}")
+
+def get_db_connection():
+    global connection_pool
+    if connection_pool is None:
+        init_connection_pool()
+    
+    try:
+        return connection_pool.get_connection()
+    except Error as e:
+        print(f"Error getting connection from pool: {e}")
         return None
 
 app.get_db_connection = get_db_connection
@@ -47,14 +73,17 @@ class ServerSideSession(CallbackDict, SessionMixin):
         self.sid = sid
         self.permanent = permanent
         self.modified = False
+        self.accessed = False  # Track if session was accessed
 
 
-class MySqlSessionInterface(SessionInterface):
-    """Custom SessionInterface to store session data in MySQL."""
+class OptimizedMySqlSessionInterface(SessionInterface):
+    """Optimized SessionInterface with caching and performance improvements."""
     def __init__(self, app, db_conn_func, table_name='sessions'):
         self.app = app
         self.db_conn_func = db_conn_func
         self.table_name = table_name
+        self.cache_timeout = 300  # 5 minutes cache
+        self.write_throttle_seconds = 1  # Throttle rapid writes
 
     def open_session(self, app, request):
         session_cookie_name = app.config.get('SESSION_COOKIE_NAME') or 'session'
@@ -68,6 +97,19 @@ class MySqlSessionInterface(SessionInterface):
             sid = os.urandom(16).hex()
             return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
         
+        # Try cache first - this is the performance optimization
+        cache_key = f"session_{sid}"
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            session_obj = ServerSideSession(
+                cached_data.get('data', {}), 
+                sid=sid, 
+                permanent=cached_data.get('permanent', False)
+            )
+            session_obj.accessed = True
+            return session_obj
+        
+        # Fall back to database (cache miss)
         conn = self.db_conn_func()
         if not conn:
             app.logger.error("Database connection failed for session open.")
@@ -75,21 +117,37 @@ class MySqlSessionInterface(SessionInterface):
 
         cursor = conn.cursor(dictionary=True)
         try:
-            
             cursor.execute(
                 f"SELECT data, expiry, is_permanent FROM {self.table_name} WHERE sid = %s", 
                 (sid,)
             )
             session_row = cursor.fetchone()
 
-            if session_row and session_row['expiry'] > datetime.now():
+            if session_row:
+                # Check if session is expired
+                if session_row['expiry'] and session_row['expiry'] <= datetime.now():
+                    # Session expired, delete it
+                    cursor.execute(f"DELETE FROM {self.table_name} WHERE sid = %s", (sid,))
+                    conn.commit()
+                    return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+                
                 data = json.loads(session_row['data'])
-                return ServerSideSession(
+                # Cache the session for future requests
+                cache_data = {
+                    'data': data,
+                    'permanent': session_row['is_permanent']
+                }
+                cache.set(cache_key, cache_data, timeout=self.cache_timeout)
+                
+                session_obj = ServerSideSession(
                     data, 
                     sid=sid, 
                     permanent=session_row['is_permanent']
                 )
+                session_obj.accessed = True
+                return session_obj
             
+            # Session not found
             return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
             
         except Exception as e:
@@ -108,6 +166,7 @@ class MySqlSessionInterface(SessionInterface):
 
         session_cookie_name = app.config.get('SESSION_COOKIE_NAME') or 'session'
 
+        # Always set the session cookie
         response.set_cookie(
             session_cookie_name,
             session.sid, 
@@ -118,6 +177,43 @@ class MySqlSessionInterface(SessionInterface):
             secure=secure
         )
 
+        # If session is empty, delete it
+        if not session:
+            if session.sid:
+                cache_key = f"session_{session.sid}"
+                cache.delete(cache_key)
+                self._delete_session_from_db(session.sid)
+            return
+
+        # Mark session as accessed for tracking
+        if not hasattr(session, 'accessed'):
+            session.accessed = True
+
+        # Always update cache for consistency
+        cache_key = f"session_{session.sid}"
+        
+        # If session was modified OR this is a new session, save it
+        if session.modified or not session.accessed:
+            cache_data = {
+                'data': dict(session),
+                'permanent': session.permanent
+            }
+            cache.set(cache_key, cache_data, timeout=self.cache_timeout)
+            
+            # Save to database (with throttling for performance)
+            last_write_key = f"last_write_{session.sid}"
+            last_write = cache.get(last_write_key)
+            current_time = datetime.now().timestamp()
+            
+            if not last_write or (current_time - last_write) >= self.write_throttle_seconds:
+                self._save_session_to_db(session, app)
+                cache.set(last_write_key, current_time, timeout=self.write_throttle_seconds)
+        
+        # Reset modified flag after saving
+        session.modified = False
+
+    def _save_session_to_db(self, session, app):
+        """Save session to database with connection pooling"""
         conn = self.db_conn_func()
         if not conn:
             app.logger.error("Database connection failed for session save.")
@@ -125,69 +221,88 @@ class MySqlSessionInterface(SessionInterface):
 
         cursor = conn.cursor()
         try:
-            if not session:
-                cursor.execute(f"DELETE FROM {self.table_name} WHERE sid = %s", (session.sid,))
-                conn.commit()
-                return
-
-            if not session.modified:
-                return 
-
             session_data = json.dumps(dict(session))
             
             if session.permanent:
                 expiry = datetime.now() + app.permanent_session_lifetime
                 is_permanent = True
             else:
-                expiry = datetime.now() + timedelta(hours=1) 
+                expiry = datetime.now() + timedelta(hours=1)
                 is_permanent = False
             
             sql = f"""
                 INSERT INTO {self.table_name} (sid, data, expiry, is_permanent)
                 VALUES (%s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE data = VALUES(data), expiry = VALUES(expiry), is_permanent = VALUES(is_permanent)
+                ON DUPLICATE KEY UPDATE 
+                    data = VALUES(data), 
+                    expiry = VALUES(expiry), 
+                    is_permanent = VALUES(is_permanent)
             """
             cursor.execute(sql, (session.sid, session_data, expiry, is_permanent))
             conn.commit()
         except Exception as e:
-            app.logger.error(f"Error saving session: {e}")
+            app.logger.error(f"Error saving session to database: {e}")
             conn.rollback()
         finally:
             cursor.close()
             conn.close()
 
-app.session_interface = MySqlSessionInterface(app, get_db_connection)
+    def _delete_session_from_db(self, sid):
+        """Delete session from database"""
+        conn = self.db_conn_func()
+        if not conn:
+            return
+
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f"DELETE FROM {self.table_name} WHERE sid = %s", (sid,))
+            conn.commit()
+        except Exception as e:
+            app.logger.error(f"Error deleting session from database: {e}")
+            conn.rollback()
+        finally:
+            cursor.close()
+            conn.close()
+
+app.session_interface = OptimizedMySqlSessionInterface(app, get_db_connection)
 
 def cleanup_expired_sessions(app):
-    """Runs the cleanup query using the app context."""
+    """Optimized session cleanup that runs less frequently"""
     with app.app_context():
         conn = app.get_db_connection()
         if conn:
             try:
                 cursor = conn.cursor()
-                cursor.execute("DELETE FROM sessions WHERE expiry <= NOW()")
+                # Only clean up sessions expired more than 1 hour ago to avoid contention
+                cursor.execute("DELETE FROM sessions WHERE expiry <= NOW() - INTERVAL 1 HOUR")
                 conn.commit()
                 app.logger.info(f"Cleaned up {cursor.rowcount} expired sessions.")
+                
+                # Also clear expired cache entries (they auto-expire but this helps memory)
+                cache.clear()  # SimpleCache doesn't need manual cleanup, but other backends might
+                
             except Exception as e:
                 app.logger.error(f"Session cleanup failed: {e}")
             finally:
                 cursor.close()
                 conn.close()
 
+# Initialize scheduler with optimized intervals
 scheduler = APScheduler()
 scheduler.init_app(app)
 
+# Run cleanup less frequently - every 6 hours instead of every hour
 scheduler.add_job(
     id='session_cleanup_job',
     func=cleanup_expired_sessions,
     args=[app],
     trigger='interval',
-    hours=1 
+    hours=6  # Reduced frequency
 )
 
 scheduler.start()
 
-
+# Register blueprints
 app.register_blueprint(signup_bp, url_prefix="/signup")
 app.register_blueprint(login_bp, url_prefix="/")
 app.register_blueprint(home_bp, url_prefix="/home")
@@ -196,12 +311,31 @@ app.register_blueprint(cart_bp, url_prefix="/cart")
 app.register_blueprint(profile_bp, url_prefix="/profile")
 app.register_blueprint(admin_bp, url_prefix="/admin")
 
+@app.before_request
+def debug_session_before():
+    """Debug session state before each request"""
+    if request.endpoint and 'debug' not in request.endpoint:
+        print(f"=== BEFORE REQUEST: {request.method} {request.path} ===")
+        print(f"Session ID: {session.sid if hasattr(session, 'sid') else 'unknown'}")
+        print(f"Session data: {dict(session)}")
+        print(f"User ID in session: {session.get('user_id')}")
+        print(f"isAdmin in session: {session.get('isAdmin')}")
+
+@app.after_request
+def debug_session_after(response):
+    """Debug session state after each request"""
+    if request.endpoint and 'debug' not in request.endpoint:
+        print(f"=== AFTER REQUEST: {request.method} {request.path} ===")
+        print(f"Session modified: {session.modified if hasattr(session, 'modified') else 'N/A'}")
+        print(f"Response status: {response.status_code}")
+        print("=" * 50)
+    return response
 
 @app.teardown_appcontext
 def close_db(error):
+    # Connection pooling handles closing, but clean up any direct connections
     if hasattr(g, 'db_connection'):
         g.db_connection.close()
-
 
 @app.route("/")
 def index():
@@ -278,8 +412,46 @@ def test_products():
             "status": "error",
             "message": f"Database error: {str(e)}"
         }), 500
+
+@app.route("/test-session-perf")
+def test_session_perf():
+    """Test endpoint to verify session performance"""
+    import time
+    start_time = time.time()
     
+    # Access session to trigger loading
+    session['test_timestamp'] = datetime.now().isoformat()
+    session.modified = True
     
+    load_time = time.time() - start_time
+    
+    return jsonify({
+        "session_id": session.sid if hasattr(session, 'sid') else 'unknown',
+        "load_time_ms": round(load_time * 1000, 2),
+        "session_data": dict(session)
+    })
+
+@app.route("/debug-session")
+def debug_session():
+    """Debug endpoint to check session state"""
+    return jsonify({
+        "session_id": session.sid if hasattr(session, 'sid') else 'unknown',
+        "session_data": dict(session),
+        "user_id": session.get('user_id'),
+        "username": session.get('username'),
+        "isAdmin": session.get('isAdmin'),
+        "permanent": session.permanent if hasattr(session, 'permanent') else False
+    })
+
+@app.route("/debug-cookies")
+def debug_cookies():
+    """Debug endpoint to check cookies"""
+    return jsonify({
+        "cookies": dict(request.cookies),
+        "session_cookie": request.cookies.get('session')
+    })
 
 if __name__ == "__main__":
+    # Initialize connection pool on startup
+    init_connection_pool()
     app.run(debug=True)
