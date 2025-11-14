@@ -37,7 +37,7 @@ h1 {
     align-items: center;
     justify-content: space-between;
     padding: 10px 0; /* horizontal padding moved to .nav-inner */
-    height: 64px; /* keeps a consistent height */
+    height: 100px; /* keeps a consistent height */
     border-radius: 0; /* remove rounding so bar touches edges */
     margin-bottom: 0;
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
@@ -64,8 +64,8 @@ h1 {
 
 /* placeholder/logo image */
 .nav-logo {
-    width: 50px;
-    height: 50px;
+    width: 100px;
+    height: 100px;
     object-fit: cover;
     border-radius: 6px;
     display: block;

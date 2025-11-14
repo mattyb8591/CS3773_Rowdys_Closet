@@ -257,55 +257,87 @@
     margin: 0.4rem 0;
   }
 
-/* --- NAVIGATION BAR (same as cart.css) --- */
 
 .nav-bar {
-    background-color: #0c2340;     /* UTSA navy */
-    padding: 0.75rem 1.5rem;      /* spacing around logo/links */
-    position: fixed;               /* keep it at the top */
+    position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
-  }
-  
-  .nav-inner {
-    max-width: 1200px;
-    margin: 0 auto;
+    background-color: #0C2340;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
-  
-  .nav-left {
+    padding: 10px 0; /* horizontal padding moved to .nav-inner */
+    height: 100px; /* keeps a consistent height */
+    border-radius: 0; /* remove rounding so bar touches edges */
+    margin-bottom: 0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+/* new: center nav content and match auth-container width */
+.nav-inner {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 0px; /* same horizontal inset as before */
+    box-sizing: border-box;
     display: flex;
     align-items: center;
-  }
-  
-  .nav-logo {
+    justify-content: space-between;
+}
+
+/* group left side (logo image + site name) */
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 0px;
+}
+
+/* placeholder/logo image */
+.nav-logo {
     width: 100px;
     height: 100px;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: 6px;
     display: block;
-  }
-  
-  .nav-links {
+}
+
+/* site name text to the right of the image */
+.logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* nav links on the right */
+.nav-links {
     display: flex;
+    gap: 18px;
     align-items: center;
-    gap: 2rem;
-    list-style: none;
     margin: 0;
     padding: 0;
-  }
-  
-  .nav-links a {
-    color: #ffffff;                /* white text */
+    font-size: 24px;
+}
+
+/* keep existing markup (li inside .nav-links) working */
+.nav-links li {
+    list-style: none;
+}
+
+/* link appearance */
+.nav-links a {
+    color: #ffffff;
     text-decoration: none;
-    font-family: Arial, sans-serif;
-    font-size: 1.1rem;
     font-weight: 600;
-  }
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.nav-links a:hover {
+    background: rgba(255,255,255,0.06);
+}
   
   /* Push content below the fixed navbar */
   body {
