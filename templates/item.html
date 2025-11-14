@@ -20,7 +20,7 @@
         <div class="nav-bar">
           <div class="nav-inner">
             <div class="nav-left">
-              <img src="..\static\img\utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
+              <img src="../static/img/utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
             </div>
             <ul class="nav-links">
               <li><a href="home.html">Home</a></li>
@@ -31,8 +31,9 @@
       </header>
 
     <main class="product-container">
+        <form id="selectForm" method="post">
         <div class="product-image">
-            <img src="{{ item.img_file_path }}" alt="{{ item.name }}" onerror="this.style.display='none'">
+            <img src="{{item.img_file_path}}" alt="Premium UTSA Hoodie">
         </div>
 
         <div class="product-details">
@@ -52,13 +53,13 @@
 
             <!-- updated size selector to only show S, M, L -->
             <div class="form-group">
-                <label for="size">Size:</label>
-                <select id="size">
-                    <option value="">Select Size</option>
-                    <option value="s">S</option>
-                    <option value="m">M</option>
-                    <option value="l">L</option>
-                </select>
+                    <label for="sizeDropdown">Size:</label>
+                    <select id="sizeDropdown" name="sizeDropdown">
+                        <option value="">Select Size</option>
+                        {% for item in options %}
+                        <option value="{{ item }}">{{ item }}</option>
+                        {% endfor %}
+                    </select>
             </div>
 
 
@@ -83,9 +84,10 @@
             </div>
 
             <div class="action-buttons">
-                <button class="add-to-cart-btn">Add to Cart</button>
+                <button type="submit" class="add-to-cart-btn">Add to Cart</button>
             </div>
         </div>
+        </form>
     </main>
 
     <script>

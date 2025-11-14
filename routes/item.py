@@ -14,14 +14,14 @@ def index(item_id):
     #get data for selected item
     cursor.execute("SELECT * FROM products WHERE product_id = %s", (item_id,))
     item_data = cursor.fetchone()
-    
+    print("Item Data:", item_data)
     if not item_data:
         cursor.close()
         db.close()
         abort(404)
 
     # Fetch size options for the item
-    cursor.execute("SELECT product_id, size, stock FROM products WHERE name = %s AND type=%s", (item_data['name'], item_data['type']))
+    cursor.execute("SELECT product_id, size, stock, img_file_path as image FROM products WHERE name = %s AND type=%s", (item_data['name'], item_data['type']))
     size_selector_data = cursor.fetchall()
     select_size_list = []
     selectedProduct = None
@@ -94,6 +94,7 @@ def index(item_id):
     
     cursor.close()
     db.close()
+    print("item_data being sent to template:", item_data)
 
     # pass full product dict to template
     return render_template("item.html", item=item_data, options=select_size_list)
