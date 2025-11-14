@@ -166,13 +166,7 @@ CREATE TABLE sessions (
     is_permanent BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE INDEX idx_sessions_expiry ON sessions(expiry);
-CREATE INDEX idx_sessions_sid ON sessions(sid);
-CREATE INDEX idx_sessions_sid_expiry ON sessions(sid, expiry);
+
 
 INSERT INTO cart_products (cart_id, product_id) VALUES (1, 880);
-
-
-DROP TABLE IF EXISTS orders;
-
 

@@ -17,64 +17,69 @@ def index():
     if "user_id" not in session:
         return redirect(url_for("login.login"))
 
-    #create cursor
-    cursor = db.cursor(dictionary=True)
+    # Create cursor with buffered=True to avoid unread results
+    cursor = db.cursor(dictionary=True, buffered=True)
 
-    #grab all products that are in the users cart
-    cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
-    customer_id = cursor.fetchone()
-    
-    # Check if a customer exists for the user
-    if customer_id is None:
-        user_cart_items = []
+    try:
+        # Grab all products that are in the users cart
+        cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
+        customer_id = cursor.fetchone()
+        
+        # Check if a customer exists for the user
+        if customer_id is None:
+            user_cart_items = []
+            cart_items_json = json.dumps(user_cart_items)
+            print("No customer found for user")  # Debug log
+            return render_template("cart.html", cartItemsJson=cart_items_json)
+            
+        customer_id = customer_id['customer_id']
+        print(f"Customer ID: {customer_id}")  # Debug log
+        
+        # Get the current active cart for the customer (where customer_id is still associated)
+        cursor.execute("SELECT cart_id FROM carts WHERE customer_id = %s", (customer_id,))
+        cart_id_data = cursor.fetchone()
+
+        # Check if a cart exists for the customer
+        if cart_id_data is None:
+            user_cart_items = []
+            print("No cart found for customer")  # Debug log
+        else:
+            cart_id = cart_id_data['cart_id']
+            print(f"Cart ID: {cart_id}")  # Debug log
+            
+            # Debug: Check what's in cart_products
+            cursor.execute("SELECT * FROM cart_products WHERE cart_id = %s", (cart_id,))
+            raw_cart_items = cursor.fetchall()  # Consume all results
+            print(f"Raw cart products: {raw_cart_items}")  # Debug log
+            
+            query = """ 
+            SELECT products.product_id as id, 
+            products.name as name, 
+            products.img_file_path as image, 
+            products.price as price, 
+            products.size as size, 
+            products.type as category,
+            COUNT(products.product_id) AS quantity
+            FROM cart_products 
+            INNER JOIN products ON cart_products.product_id = products.product_id 
+            WHERE cart_products.cart_id = %s
+            GROUP BY products.product_id
+            """
+            cursor.execute(query,(cart_id,))
+            user_cart_items = cursor.fetchall()  # Consume all results
+            print(f"Processed cart items: {user_cart_items}")  # Debug log
+        
         cart_items_json = json.dumps(user_cart_items)
-        print("No customer found for user")  # Debug log
+        print(f"Cart items JSON: {cart_items_json}")  # Debug log
+
         return render_template("cart.html", cartItemsJson=cart_items_json)
         
-    customer_id = customer_id['customer_id']
-    print(f"Customer ID: {customer_id}")  # Debug log
-    
-    cursor.execute("SELECT cart_id FROM carts WHERE customer_id = %s", (customer_id,))
-    cart_id_data = cursor.fetchone()
-
-    # Check if a cart exists for the customer
-    if cart_id_data is None:
-        user_cart_items = []
-        print("No cart found for customer")  # Debug log
-    else:
-        cart_id = cart_id_data['cart_id']
-        print(f"Cart ID: {cart_id}")  # Debug log
-        
-        # Debug: Check what's in cart_products
-        cursor.execute("SELECT * FROM cart_products WHERE cart_id = %s", (cart_id,))
-        raw_cart_items = cursor.fetchall()
-        print(f"Raw cart products: {raw_cart_items}")  # Debug log
-        
-        query = """ 
-        SELECT products.product_id as id, 
-        products.name as name, 
-        products.img_file_path as image, 
-        products.price as price, 
-        products.size as size, 
-        products.type as category,
-        COUNT(products.product_id) AS quantity
-        FROM cart_products 
-        INNER JOIN products ON cart_products.product_id = products.product_id 
-        WHERE cart_products.cart_id = %s
-        GROUP BY products.product_id
-        """
-        cursor.execute(query,(cart_id,))
-        user_cart_items = cursor.fetchall()
-        print(f"Processed cart items: {user_cart_items}")  # Debug log
-    
-    cursor.close()
-    db.close()
-    
-    cart_items_json = json.dumps(user_cart_items)
-    print(f"Cart items JSON: {cart_items_json}")  # Debug log
-
-    if request.method == 'GET':
-        return render_template("cart.html", cartItemsJson=cart_items_json)
+    except Exception as e:
+        print(f"Error in cart index: {e}")
+        return jsonify({"error": "Error loading cart"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 @cart_bp.route("/api/update-quantity", methods=["POST"])
 def update_quantity():
@@ -94,7 +99,7 @@ def update_quantity():
     if not product_id:
         return jsonify({"error": "Product ID is required"}), 400
 
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True, buffered=True)
     try:
         # Get customer_id and cart_id
         cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
@@ -178,7 +183,7 @@ def remove_item():
     if not product_id:
         return jsonify({"error": "Product ID is required"}), 400
 
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True, buffered=True)
     try:
         # Get customer_id and cart_id
         cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
@@ -234,7 +239,7 @@ def checkout():
     if not payment_type:
         return jsonify({"error": "Payment type is required"}), 400
 
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True, buffered=True)
     try:
         # Get customer_id and current cart
         cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
@@ -306,9 +311,11 @@ def checkout():
         )
         order_id = cursor.lastrowid
         
-        # Create a new empty cart for the customer
-        cursor.execute("INSERT INTO carts (customer_id) VALUES (%s)", (customer_id,))
-        new_cart_id = cursor.lastrowid
+        # Delete all cart_products for this cart (clear the cart contents)
+        cursor.execute("DELETE FROM cart_products WHERE cart_id = %s", (current_cart_id,))
+        
+        # We don't create a new cart - the customer will keep using the same cart ID
+        # but it will be empty after checkout
         
         db.commit()
         
@@ -317,7 +324,6 @@ def checkout():
             "message": "Order placed successfully!",
             "order_id": order_id,
             "payment_id": payment_id,
-            "new_cart_id": new_cart_id,
             "total": final_total,
             "discount_applied": applied_discount_code is not None
         })
@@ -345,7 +351,7 @@ def validate_discount():
     if not code:
         return jsonify({"error": "Promo code is required"}), 400
     
-    cursor = db.cursor(dictionary=True)
+    cursor = db.cursor(dictionary=True, buffered=True)
     try:
         # Check if discount code exists and is valid
         cursor.execute("""
