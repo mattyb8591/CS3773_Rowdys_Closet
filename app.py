@@ -1,3 +1,4 @@
+
 from flask import Flask, g, jsonify, session, Response, request
 from flask.sessions import SessionInterface, SessionMixin
 from werkzeug.datastructures import CallbackDict
@@ -51,69 +52,71 @@ def init_connection_pool():
 
 def get_db_connection():
     global connection_pool
-    if connection_pool is None:
-        init_connection_pool()
+    max_retries = 3
+    retry_count = 0
     
-    try:
-        return connection_pool.get_connection()
-    except Error as e:
-        print(f"Error getting connection from pool: {e}")
-        return None
+    while retry_count < max_retries:
+        try:
+            if connection_pool is None:
+                init_connection_pool()
+            
+            conn = connection_pool.get_connection()
+            if conn and conn.is_connected():
+                return conn
+            else:
+                retry_count += 1
+                print(f"Failed to get connection, retry {retry_count}/{max_retries}")
+                
+        except Error as e:
+            retry_count += 1
+            print(f"Error getting connection (attempt {retry_count}/{max_retries}): {e}")
+            if retry_count >= max_retries:
+                print("Max retries reached, falling back to direct connection")
+                # Fall back to direct connection
+                try:
+                    return mysql.connector.connect(
+                        host="20.120.180.6",
+                        user="rowdy",
+                        password="rowdyscloset",
+                        database="rowdys_closet_db",
+                        autocommit=True
+                    )
+                except Error as fallback_error:
+                    print(f"Fallback connection also failed: {fallback_error}")
+                    return None
+    
+    return None
 
+# Make get_db_connection available as an app method
 app.get_db_connection = get_db_connection
 
-
 class ServerSideSession(CallbackDict, SessionMixin):
-    """A dictionary-like object representing the session data."""
     def __init__(self, initial=None, sid=None, permanent=None):
         def on_update(self):
             self.modified = True
-        
         CallbackDict.__init__(self, initial, on_update)
         self.sid = sid
         self.permanent = permanent
         self.modified = False
-        self.accessed = False  # Track if session was accessed
 
-
-class OptimizedMySqlSessionInterface(SessionInterface):
-    """Optimized SessionInterface with caching and performance improvements."""
+class FixedMySqlSessionInterface(SessionInterface):
     def __init__(self, app, db_conn_func, table_name='sessions'):
         self.app = app
         self.db_conn_func = db_conn_func
         self.table_name = table_name
-        self.cache_timeout = 300  # 5 minutes cache
-        self.write_throttle_seconds = 1  # Throttle rapid writes
 
     def open_session(self, app, request):
-        session_cookie_name = app.config.get('SESSION_COOKIE_NAME') or 'session'
-        sid = request.cookies.get(session_cookie_name)
+        sid = request.cookies.get(app.session_cookie_name)
         
-        if sid and len(sid) != 32: 
-            app.logger.warning(f"Invalid SID length ({len(sid)}). Generating new SID.")
-            sid = None 
-
         if not sid:
+            # Create new session
             sid = os.urandom(16).hex()
-            return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+            return ServerSideSession(sid=sid, permanent=self.get_permanent_status(app))
         
-        # Try cache first - this is the performance optimization
-        cache_key = f"session_{sid}"
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            session_obj = ServerSideSession(
-                cached_data.get('data', {}), 
-                sid=sid, 
-                permanent=cached_data.get('permanent', False)
-            )
-            session_obj.accessed = True
-            return session_obj
-        
-        # Fall back to database (cache miss)
         conn = self.db_conn_func()
         if not conn:
-            app.logger.error("Database connection failed for session open.")
-            return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+            app.logger.error("Database connection failed for session open")
+            return ServerSideSession(sid=sid, permanent=self.get_permanent_status(app))
 
         cursor = conn.cursor(dictionary=True)
         try:
@@ -126,102 +129,108 @@ class OptimizedMySqlSessionInterface(SessionInterface):
             if session_row:
                 # Check if session is expired
                 if session_row['expiry'] and session_row['expiry'] <= datetime.now():
-                    # Session expired, delete it
                     cursor.execute(f"DELETE FROM {self.table_name} WHERE sid = %s", (sid,))
                     conn.commit()
-                    return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+                    return ServerSideSession(sid=sid, permanent=self.get_permanent_status(app))
                 
-                data = json.loads(session_row['data'])
-                # Cache the session for future requests
-                cache_data = {
-                    'data': data,
-                    'permanent': session_row['is_permanent']
-                }
-                cache.set(cache_key, cache_data, timeout=self.cache_timeout)
-                
-                session_obj = ServerSideSession(
-                    data, 
-                    sid=sid, 
-                    permanent=session_row['is_permanent']
-                )
-                session_obj.accessed = True
-                return session_obj
+                # Parse session data and handle legacy formats
+                try:
+                    data = json.loads(session_row['data'])
+                    
+                    # Fix legacy session formats
+                    data = self._fix_legacy_session_data(data)
+                    
+                    session_obj = ServerSideSession(
+                        data, 
+                        sid=sid, 
+                        permanent=session_row['is_permanent']
+                    )
+                    return session_obj
+                except json.JSONDecodeError:
+                    # Handle corrupted session data
+                    app.logger.warning(f"Corrupted session data for SID: {sid}")
+                    return ServerSideSession(sid=sid, permanent=self.get_permanent_status(app))
             
-            # Session not found
-            return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+            # Session not found in database
+            return ServerSideSession(sid=sid, permanent=self.get_permanent_status(app))
             
         except Exception as e:
             app.logger.error(f"Error opening session: {e}")
-            return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+            return ServerSideSession(sid=sid, permanent=self.get_permanent_status(app))
         finally:
             cursor.close()
             conn.close()
 
+    def _fix_legacy_session_data(self, data):
+        """Fix legacy session data formats"""
+        # Handle sessions with _user_id instead of user_id
+        if '_user_id' in data and 'user_id' not in data:
+            data['user_id'] = data.pop('_user_id')
+        
+        # Handle sessions with _username instead of username
+        if '_username' in data and 'username' not in data:
+            data['username'] = data.pop('_username')
+        
+        # Handle sessions with _email instead of email
+        if '_email' in data and 'email' not in data:
+            data['email'] = data.pop('_email')
+        
+        # Handle sessions with _isAdmin instead of isAdmin
+        if '_isAdmin' in data and 'isAdmin' not in data:
+            data['isAdmin'] = data.pop('_isAdmin')
+        
+        # Ensure _permanent flag is handled correctly
+        if '_permanent' in data:
+            # This should be handled by the session interface, not stored in data
+            data.pop('_permanent', None)
+        
+        return data
+
+    def get_permanent_status(self, app):
+        """Determine if session should be permanent based on app settings"""
+        return app.permanent_session_lifetime and app.permanent_session_lifetime.total_seconds() > 0
+
     def save_session(self, app, session, response):
+        if not session:
+            if session.modified:
+                self._delete_session_from_db(session.sid)
+                response.delete_cookie(app.session_cookie_name)
+            return
+
         domain = self.get_cookie_domain(app)
         path = self.get_cookie_path(app)
         httponly = self.get_cookie_httponly(app)
         secure = self.get_cookie_secure(app)
         expires = self.get_expiration_time(app, session)
 
-        session_cookie_name = app.config.get('SESSION_COOKIE_NAME') or 'session'
-
-        # Always set the session cookie
+        # Always set the cookie
         response.set_cookie(
-            session_cookie_name,
-            session.sid, 
-            expires=expires, 
-            httponly=httponly, 
-            domain=domain, 
-            path=path, 
+            app.session_cookie_name,
+            session.sid,
+            expires=expires,
+            httponly=httponly,
+            domain=domain,
+            path=path,
             secure=secure
         )
 
-        # If session is empty, delete it
-        if not session:
-            if session.sid:
-                cache_key = f"session_{session.sid}"
-                cache.delete(cache_key)
-                self._delete_session_from_db(session.sid)
+        if not session.modified:
             return
 
-        # Mark session as accessed for tracking
-        if not hasattr(session, 'accessed'):
-            session.accessed = True
-
-        # Always update cache for consistency
-        cache_key = f"session_{session.sid}"
+        # Clean session data before saving
+        session_data = dict(session)
         
-        # If session was modified OR this is a new session, save it
-        if session.modified or not session.accessed:
-            cache_data = {
-                'data': dict(session),
-                'permanent': session.permanent
-            }
-            cache.set(cache_key, cache_data, timeout=self.cache_timeout)
-            
-            # Save to database (with throttling for performance)
-            last_write_key = f"last_write_{session.sid}"
-            last_write = cache.get(last_write_key)
-            current_time = datetime.now().timestamp()
-            
-            if not last_write or (current_time - last_write) >= self.write_throttle_seconds:
-                self._save_session_to_db(session, app)
-                cache.set(last_write_key, current_time, timeout=self.write_throttle_seconds)
+        # Remove any Flask internal keys that shouldn't be stored
+        session_data.pop('_permanent', None)
         
-        # Reset modified flag after saving
-        session.modified = False
-
-    def _save_session_to_db(self, session, app):
-        """Save session to database with connection pooling"""
         conn = self.db_conn_func()
         if not conn:
-            app.logger.error("Database connection failed for session save.")
+            app.logger.error("Database connection failed for session save")
             return
 
         cursor = conn.cursor()
         try:
-            session_data = json.dumps(dict(session))
+            session_data_json = json.dumps(session_data)
             
             if session.permanent:
                 expiry = datetime.now() + app.permanent_session_lifetime
@@ -238,7 +247,7 @@ class OptimizedMySqlSessionInterface(SessionInterface):
                     expiry = VALUES(expiry), 
                     is_permanent = VALUES(is_permanent)
             """
-            cursor.execute(sql, (session.sid, session_data, expiry, is_permanent))
+            cursor.execute(sql, (session.sid, session_data_json, expiry, is_permanent))
             conn.commit()
         except Exception as e:
             app.logger.error(f"Error saving session to database: {e}")
@@ -248,7 +257,6 @@ class OptimizedMySqlSessionInterface(SessionInterface):
             conn.close()
 
     def _delete_session_from_db(self, sid):
-        """Delete session from database"""
         conn = self.db_conn_func()
         if not conn:
             return
@@ -264,7 +272,8 @@ class OptimizedMySqlSessionInterface(SessionInterface):
             cursor.close()
             conn.close()
 
-app.session_interface = OptimizedMySqlSessionInterface(app, get_db_connection)
+# Use the fixed session interface
+app.session_interface = FixedMySqlSessionInterface(app, get_db_connection)
 
 def cleanup_expired_sessions(app):
     """Optimized session cleanup that runs less frequently"""

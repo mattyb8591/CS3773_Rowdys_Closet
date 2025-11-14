@@ -129,7 +129,7 @@ SELECT * FROM users;
 
 SELECT * FROM customers
 
-SELECT * FROM carts;
+SELECT * FROM sessions;
 
 SELECT * FROM users;
 
