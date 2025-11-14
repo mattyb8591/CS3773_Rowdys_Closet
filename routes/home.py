@@ -131,7 +131,7 @@ def result_search():
         search_wildcard = f"%{search_value}%"
 
         print("Searching for the desired products based on the searchbar input")
-        cursor.execute("SELECT * FROM products WHERE name LIKE %s OR description LIKE %s", (search_wildcard, search_wildcard))
+        cursor.execute("SELECT * FROM products WHERE name LIKE %s OR description LIKE %s OR type LIKE %s", (search_wildcard, search_wildcard, search_wildcard))
         found_products = cursor.fetchall()
         print(found_products)
 
