@@ -23,8 +23,8 @@
               <img src="../static/img/utsa-roadrunners-logo.png" class="nav-logo" alt="Rowdy's Closet logo">
             </div>
             <ul class="nav-links">
-              <li><a href="home.html">Home</a></li>
-              <li><a href="cart.html" class="active">Checkout</a></li>
+              <li><a href="{{ url_for('home.index') }}">Home</a></li>
+              <li><a href="{{ url_for('cart.index') }}" class="active">Checkout</a></li>
             </ul>
           </div>
         </div>
