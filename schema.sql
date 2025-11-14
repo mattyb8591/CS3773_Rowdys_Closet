@@ -81,6 +81,10 @@ SELECT * FROM users;
 
 SELECT * FROM products;
 
+SELECT * FROM carts;
+
+SELECT * FROM cart_products;
+
 ALTER TABLE products
 ADD type varchar(25);
 
@@ -121,6 +125,8 @@ SELECT * FROM customers
 SELECT * FROM carts;
 
 SELECT * FROM users;
+
+SELECT * FROM discount_codes;
 
 SELECT u.user_id, 
       u.username, 
@@ -163,3 +169,4 @@ CREATE INDEX idx_sessions_expiry ON sessions(expiry);
 CREATE INDEX idx_sessions_sid ON sessions(sid);
 CREATE INDEX idx_sessions_sid_expiry ON sessions(sid, expiry);
 
+INSERT INTO cart_products (cart_id, product_id) VALUES (1, 880);

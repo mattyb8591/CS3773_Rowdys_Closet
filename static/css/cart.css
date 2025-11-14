@@ -344,3 +344,68 @@
         border-top: 1px dashed #eee;
     }
 }
+.promo-code-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.promo-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.promo-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.apply-button {
+    padding: 8px 16px;
+    background-color: #f15a22;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex: 1;
+}
+
+.apply-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.remove-button {
+    padding: 8px 16px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    flex: 1;
+}
+
+.promo-message {
+    font-size: 12px;
+    margin-top: 4px;
+    min-height: 16px;
+}
+
+.promo-message.success {
+    color: #28a745;
+}
+
+.promo-message.error {
+    color: #dc3545;
+}
+
+.discount-value {
+    color: #28a745;
+    font-weight: bold;
+}
