@@ -22,13 +22,18 @@ def get_db_connection():
 @admin_bp.before_request
 def require_admin():
     if 'user_id' not in session:
+        print("Admin before_request: No user_id in session, redirecting to login")
         return redirect(url_for('login.login'))
         
-    if not session["isAdmin"]:
+    if not session.get("isAdmin"):  # Changed to .get() to avoid KeyError
+        print("Admin before_request: User is not admin, redirecting to home")
         return redirect(url_for('home.index'))
+    
+    print("Admin before_request: User is admin, allowing access")
 
 @admin_bp.route("/")
 def index():
+    print("Admin index: Rendering admin page")
     return render_template("admin.html")
     
 @admin_bp.route("/dashboard")

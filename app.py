@@ -1,4 +1,4 @@
-from flask import Flask, g, jsonify, session, Response
+from flask import Flask, g, jsonify, session, Response, request
 from flask.sessions import SessionInterface, SessionMixin
 from werkzeug.datastructures import CallbackDict
 import mysql.connector
@@ -118,12 +118,19 @@ class OptimizedMySqlSessionInterface(SessionInterface):
         cursor = conn.cursor(dictionary=True)
         try:
             cursor.execute(
-                f"SELECT data, expiry, is_permanent FROM {self.table_name} WHERE sid = %s AND expiry > %s", 
-                (sid, datetime.now())
+                f"SELECT data, expiry, is_permanent FROM {self.table_name} WHERE sid = %s", 
+                (sid,)
             )
             session_row = cursor.fetchone()
 
             if session_row:
+                # Check if session is expired
+                if session_row['expiry'] and session_row['expiry'] <= datetime.now():
+                    # Session expired, delete it
+                    cursor.execute(f"DELETE FROM {self.table_name} WHERE sid = %s", (sid,))
+                    conn.commit()
+                    return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
+                
                 data = json.loads(session_row['data'])
                 # Cache the session for future requests
                 cache_data = {
@@ -140,7 +147,7 @@ class OptimizedMySqlSessionInterface(SessionInterface):
                 session_obj.accessed = True
                 return session_obj
             
-            # Session expired or not found
+            # Session not found
             return ServerSideSession(sid=sid, permanent=app.permanent_session_lifetime.total_seconds() > 0)
             
         except Exception as e:
@@ -159,6 +166,7 @@ class OptimizedMySqlSessionInterface(SessionInterface):
 
         session_cookie_name = app.config.get('SESSION_COOKIE_NAME') or 'session'
 
+        # Always set the session cookie
         response.set_cookie(
             session_cookie_name,
             session.sid, 
@@ -169,55 +177,40 @@ class OptimizedMySqlSessionInterface(SessionInterface):
             secure=secure
         )
 
-        # Skip database operations if session wasn't accessed or modified
-        if not hasattr(session, 'accessed') or not session.accessed:
+        # If session is empty, delete it
+        if not session:
+            if session.sid:
+                cache_key = f"session_{session.sid}"
+                cache.delete(cache_key)
+                self._delete_session_from_db(session.sid)
             return
+
+        # Mark session as accessed for tracking
+        if not hasattr(session, 'accessed'):
+            session.accessed = True
 
         # Always update cache for consistency
         cache_key = f"session_{session.sid}"
         
-        if not session:
-            # Session is empty, delete from cache and database
-            cache.delete(cache_key)
-            self._delete_session_from_db(session.sid)
-            return
-
-        if not session.modified:
-            # Session wasn't modified, no need to write to database
-            # But ensure it's in cache for future reads
-            if not cache.get(cache_key):
-                cache_data = {
-                    'data': dict(session),
-                    'permanent': session.permanent
-                }
-                cache.set(cache_key, cache_data, timeout=self.cache_timeout)
-            return
-
-        # Throttle rapid writes to database
-        last_write_key = f"last_write_{session.sid}"
-        last_write = cache.get(last_write_key)
-        current_time = datetime.now().timestamp()
-        
-        if last_write and (current_time - last_write) < self.write_throttle_seconds:
-            # Too soon to write to database again, just update cache
+        # If session was modified OR this is a new session, save it
+        if session.modified or not session.accessed:
             cache_data = {
                 'data': dict(session),
                 'permanent': session.permanent
             }
             cache.set(cache_key, cache_data, timeout=self.cache_timeout)
-            return
+            
+            # Save to database (with throttling for performance)
+            last_write_key = f"last_write_{session.sid}"
+            last_write = cache.get(last_write_key)
+            current_time = datetime.now().timestamp()
+            
+            if not last_write or (current_time - last_write) >= self.write_throttle_seconds:
+                self._save_session_to_db(session, app)
+                cache.set(last_write_key, current_time, timeout=self.write_throttle_seconds)
         
-        # Update last write time
-        cache.set(last_write_key, current_time, timeout=self.write_throttle_seconds)
-
-        # Write to both cache and database
-        cache_data = {
-            'data': dict(session),
-            'permanent': session.permanent
-        }
-        cache.set(cache_key, cache_data, timeout=self.cache_timeout)
-        
-        self._save_session_to_db(session, app)
+        # Reset modified flag after saving
+        session.modified = False
 
     def _save_session_to_db(self, session, app):
         """Save session to database with connection pooling"""
@@ -318,6 +311,26 @@ app.register_blueprint(cart_bp, url_prefix="/cart")
 app.register_blueprint(profile_bp, url_prefix="/profile")
 app.register_blueprint(admin_bp, url_prefix="/admin")
 
+@app.before_request
+def debug_session_before():
+    """Debug session state before each request"""
+    if request.endpoint and 'debug' not in request.endpoint:
+        print(f"=== BEFORE REQUEST: {request.method} {request.path} ===")
+        print(f"Session ID: {session.sid if hasattr(session, 'sid') else 'unknown'}")
+        print(f"Session data: {dict(session)}")
+        print(f"User ID in session: {session.get('user_id')}")
+        print(f"isAdmin in session: {session.get('isAdmin')}")
+
+@app.after_request
+def debug_session_after(response):
+    """Debug session state after each request"""
+    if request.endpoint and 'debug' not in request.endpoint:
+        print(f"=== AFTER REQUEST: {request.method} {request.path} ===")
+        print(f"Session modified: {session.modified if hasattr(session, 'modified') else 'N/A'}")
+        print(f"Response status: {response.status_code}")
+        print("=" * 50)
+    return response
+
 @app.teardown_appcontext
 def close_db(error):
     # Connection pooling handles closing, but clean up any direct connections
@@ -416,6 +429,26 @@ def test_session_perf():
         "session_id": session.sid if hasattr(session, 'sid') else 'unknown',
         "load_time_ms": round(load_time * 1000, 2),
         "session_data": dict(session)
+    })
+
+@app.route("/debug-session")
+def debug_session():
+    """Debug endpoint to check session state"""
+    return jsonify({
+        "session_id": session.sid if hasattr(session, 'sid') else 'unknown',
+        "session_data": dict(session),
+        "user_id": session.get('user_id'),
+        "username": session.get('username'),
+        "isAdmin": session.get('isAdmin'),
+        "permanent": session.permanent if hasattr(session, 'permanent') else False
+    })
+
+@app.route("/debug-cookies")
+def debug_cookies():
+    """Debug endpoint to check cookies"""
+    return jsonify({
+        "cookies": dict(request.cookies),
+        "session_cookie": request.cookies.get('session')
     })
 
 if __name__ == "__main__":

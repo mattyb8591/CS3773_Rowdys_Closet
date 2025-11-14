@@ -201,7 +201,7 @@ function calculateDiscountAmount(discountData) {
     
     console.log('Total before discount:', totalBeforeDiscount);
     
-    // Check minimum purchase requirement
+    // Check minimum purchase requirement (based on subtotal as per typical e-commerce)
     if (discountData.min_purchase > 0 && subtotal < discountData.min_purchase) {
         console.log('Minimum purchase requirement not met');
         return 0;
@@ -210,16 +210,17 @@ function calculateDiscountAmount(discountData) {
     let discountAmount = 0;
     
     if (discountData.discount_type === 'percentage') {
+        // Percentage discounts apply to subtotal only (typical e-commerce practice)
         discountAmount = subtotal * (discountData.value / 100);
-        console.log('Percentage discount calculated:', discountAmount);
+        console.log('Percentage discount calculated on subtotal:', discountAmount);
     } else if (discountData.discount_type === 'fixed') {
-        discountAmount = discountData.value;
-        console.log('Fixed discount amount:', discountAmount);
+        // Fixed discounts apply to the total (including tax and shipping)
+        discountAmount = Math.min(discountData.value, totalBeforeDiscount);
+        console.log('Fixed discount amount applied to total:', discountAmount);
     }
     
-    // Ensure discount doesn't make total negative
-    const maxDiscount = totalBeforeDiscount;
-    const finalDiscount = Math.min(discountAmount, maxDiscount);
+    // Ensure discount doesn't exceed the total before discount
+    const finalDiscount = Math.min(discountAmount, totalBeforeDiscount);
     
     console.log('Final discount amount:', finalDiscount);
     return finalDiscount;
@@ -242,7 +243,7 @@ function updateSummary() {
     
     console.log('Update Summary - Subtotal:', subtotal, 'Tax:', tax, 'Shipping:', shippingCost, 'Current Discount:', discount);
     
-    // Recalculate discount in case subtotal changed
+    // Recalculate discount in case subtotal or shipping changed
     if (appliedDiscount) {
         console.log('Recalculating discount with applied discount:', appliedDiscount);
         discount = calculateDiscountAmount(appliedDiscount);
@@ -306,6 +307,7 @@ function removePromoCode() {
 async function checkout() {
     const paymentType = document.getElementById('paymentType')?.value;
     const paymentDetails = document.getElementById('paymentDetails')?.value || '';
+    const shippingMethod = document.getElementById("shippingSelect")?.value || 'standard';
 
     if (!paymentType) {
         showToast('Please select a payment method', 'error');
@@ -328,7 +330,8 @@ async function checkout() {
             body: JSON.stringify({
                 payment_type: paymentType,
                 payment_details: paymentDetails,
-                discount_code: appliedDiscount ? appliedDiscount.code : null  // Send discount code if applied
+                discount_code: appliedDiscount ? appliedDiscount.code : null,  // Send discount code if applied
+                shipping_method: shippingMethod  // Send the selected shipping method
             })
         });
 

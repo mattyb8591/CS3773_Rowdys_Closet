@@ -72,10 +72,17 @@ def load_products():
 
 @home_bp.route("/", methods=["GET"])
 def index():
-
-    if session["isAdmin"]:
+    # Check if user is logged in first
+    if "user_id" not in session:
+        print("Home: No user_id in session, redirecting to login")
+        return redirect(url_for("login.login"))
+    
+    # Safely check isAdmin with .get() method to avoid KeyError
+    if session.get("isAdmin"):
+        print("Home: User is admin, redirecting to admin")
         return redirect(url_for("admin.index"))
         
+    print("Home: Rendering home page for regular user")
     products_by_type = load_products()
     return render_template("home.html", products_by_type=products_by_type)
 

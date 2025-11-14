@@ -29,7 +29,7 @@ def index():
     cursor.close()
     db.close()
 
-    if session["isAdmin"]:
+    if session.get("isAdmin"):
         return render_template("admin-profile.html", user=user, address=address)
     else:
         return render_template("profile.html", user=user, address=address)
@@ -159,5 +159,8 @@ def update():
 
 @profile_bp.route("/logout")
 def logout():
+    # Clear all session data
     session.clear()
+    # Ensure session is saved
+    session.modified = True
     return redirect(url_for("login.login"))

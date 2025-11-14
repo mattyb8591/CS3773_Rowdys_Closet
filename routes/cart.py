@@ -25,7 +25,7 @@ def index():
         cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
         customer_id = cursor.fetchone()
         
-        # Check if a customer exists for the user
+        # Check if a customer exists for the the user
         if customer_id is None:
             user_cart_items = []
             cart_items_json = json.dumps(user_cart_items)
@@ -226,6 +226,7 @@ def remove_item():
 @cart_bp.route("/api/checkout", methods=["POST"])
 def checkout():
     from app import get_db_connection
+    from decimal import Decimal
     db = get_db_connection()
 
     if db is None:
@@ -238,6 +239,7 @@ def checkout():
     payment_type = data.get('payment_type')
     payment_details = data.get('payment_details', '')
     discount_code = data.get('discount_code')  # Get discount code from request
+    shipping_method = data.get('shipping_method', 'standard')  # Get shipping method from request
     
     if not payment_type:
         return jsonify({"error": "Payment type is required"}), 400
@@ -261,7 +263,7 @@ def checkout():
             
         current_cart_id = current_cart['cart_id']
         
-        # Calculate total from cart items
+        # Calculate subtotal from cart items
         cursor.execute("""
             SELECT SUM(products.price) as subtotal
             FROM cart_products 
@@ -270,11 +272,30 @@ def checkout():
         """, (current_cart_id,))
         
         total_result = cursor.fetchone()
-        subtotal = total_result['subtotal'] if total_result and total_result['subtotal'] else 0.00
+        subtotal = total_result['subtotal'] if total_result and total_result['subtotal'] else Decimal('0.00')
+        
+        # Convert to float for calculations to avoid Decimal/float mixing
+        subtotal_float = float(subtotal)
+        
+        # Calculate tax (8.25%)
+        tax_rate = 0.0825
+        tax_amount = subtotal_float * tax_rate
+        
+        # Calculate shipping cost based on selected method
+        shipping_cost = 0.0
+        if shipping_method == "standard":
+            shipping_cost = 5.0
+        elif shipping_method == "express":
+            shipping_cost = 15.0
+        # pickup is free (0.0)
+        
+        # Calculate total before discount (subtotal + tax + shipping)
+        total_before_discount = subtotal_float + tax_amount + shipping_cost
         
         # Apply discount if provided
-        final_total = subtotal
+        final_total = total_before_discount
         applied_discount_code = None
+        discount_amount = 0.0
         
         if discount_code:
             # Validate discount code
@@ -287,16 +308,22 @@ def checkout():
             discount = cursor.fetchone()
             
             if discount:
-                # Check minimum purchase requirement
-                if not discount['min_purchase'] or subtotal >= discount['min_purchase']:
+                # Convert discount values to appropriate types
+                discount_value = float(discount['value'])
+                min_purchase = float(discount['min_purchase']) if discount['min_purchase'] else 0.0
+                
+                # Check minimum purchase requirement (based on subtotal as per e-commerce standards)
+                if not discount['min_purchase'] or subtotal_float >= min_purchase:
                     applied_discount_code = discount_code
                     
                     if discount['discount_type'] == 'percentage':
-                        discount_amount = subtotal * (discount['value'] / 100)
+                        # Percentage discounts apply to subtotal only (typical e-commerce practice)
+                        discount_amount = subtotal_float * (discount_value / 100)
                     else:  # fixed amount
-                        discount_amount = discount['value']
+                        # Fixed discounts apply to the total (including tax and shipping)
+                        discount_amount = min(discount_value, total_before_discount)
                     
-                    final_total = max(0, subtotal - discount_amount)
+                    final_total = max(0, total_before_discount - discount_amount)
         
         # Create payment record
         cursor.execute(
@@ -309,8 +336,20 @@ def checkout():
         order_date = datetime.now()
         
         cursor.execute(
-            "INSERT INTO orders (total, discount_code, order_status, order_date, customer_id, cart_id, payment_id) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (final_total, applied_discount_code, 'completed', order_date, customer_id, current_cart_id, payment_id)
+            "INSERT INTO orders (total, discount_code, order_status, order_date, customer_id, cart_id, payment_id, subtotal, tax_amount, shipping_cost, shipping_method) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                Decimal(str(final_total)), 
+                applied_discount_code, 
+                'completed', 
+                order_date, 
+                customer_id, 
+                current_cart_id, 
+                payment_id, 
+                Decimal(str(subtotal_float)), 
+                Decimal(str(tax_amount)), 
+                Decimal(str(shipping_cost)), 
+                shipping_method
+            )
         )
         order_id = cursor.lastrowid
         
@@ -327,6 +366,10 @@ def checkout():
             "message": "Order placed successfully!",
             "order_id": order_id,
             "payment_id": payment_id,
+            "subtotal": subtotal_float,
+            "tax_amount": tax_amount,
+            "shipping_cost": shipping_cost,
+            "discount_amount": discount_amount,
             "total": final_total,
             "discount_applied": applied_discount_code is not None
         })
