@@ -64,6 +64,12 @@ def index():
             """
             cursor.execute(query,(cart_id,))
             user_cart_items = cursor.fetchall()
+            
+            # Convert NULL sizes to "One Size" for display
+            for item in user_cart_items:
+                if item['size'] is None:
+                    item['size'] = "One Size"
+            
             print(f"Processed cart items with sizes: {user_cart_items}")  # Debug log
         
         cart_items_json = json.dumps(user_cart_items)
@@ -94,8 +100,11 @@ def update_quantity():
     size = data.get('size')  # Add size parameter
     change = data.get('change', 0)  # +1 for increment, -1 for decrement
     
-    if not product_id or not size:
-        return jsonify({"error": "Product ID and size are required"}), 400
+    if not product_id:
+        return jsonify({"error": "Product ID is required"}), 400
+
+    # Convert "One Size" back to None for database query
+    db_size_value = None if size == "One Size" else size
 
     cursor = db.cursor(dictionary=True, buffered=True)
     try:
@@ -128,28 +137,51 @@ def update_quantity():
         elif change < 0:
             # Remove one instance of the item
             # Since size is in products table, we need to join to filter by size
-            cursor.execute("""
-                DELETE FROM cart_products 
-                WHERE cart_product_id IN (
-                    SELECT cart_product_id FROM (
-                        SELECT cp.cart_product_id 
-                        FROM cart_products cp
-                        INNER JOIN products p ON cp.product_id = p.product_id
-                        WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
-                        LIMIT 1
-                    ) AS tmp
-                )
-            """, (cart_id, product_id, size))
+            if db_size_value is None:
+                # Handle NULL size (One Size)
+                cursor.execute("""
+                    DELETE FROM cart_products 
+                    WHERE cart_product_id IN (
+                        SELECT cart_product_id FROM (
+                            SELECT cp.cart_product_id 
+                            FROM cart_products cp
+                            INNER JOIN products p ON cp.product_id = p.product_id
+                            WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size IS NULL
+                            LIMIT 1
+                        ) AS tmp
+                    )
+                """, (cart_id, product_id))
+            else:
+                cursor.execute("""
+                    DELETE FROM cart_products 
+                    WHERE cart_product_id IN (
+                        SELECT cart_product_id FROM (
+                            SELECT cp.cart_product_id 
+                            FROM cart_products cp
+                            INNER JOIN products p ON cp.product_id = p.product_id
+                            WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
+                            LIMIT 1
+                        ) AS tmp
+                    )
+                """, (cart_id, product_id, db_size_value))
         
         db.commit()
         
         # Get updated quantity for this product with specific size
-        cursor.execute("""
-            SELECT COUNT(*) as quantity 
-            FROM cart_products cp
-            INNER JOIN products p ON cp.product_id = p.product_id
-            WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
-        """, (cart_id, product_id, size))
+        if db_size_value is None:
+            cursor.execute("""
+                SELECT COUNT(*) as quantity 
+                FROM cart_products cp
+                INNER JOIN products p ON cp.product_id = p.product_id
+                WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size IS NULL
+            """, (cart_id, product_id))
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) as quantity 
+                FROM cart_products cp
+                INNER JOIN products p ON cp.product_id = p.product_id
+                WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
+            """, (cart_id, product_id, db_size_value))
         
         result = cursor.fetchone()
         new_quantity = result['quantity'] if result else 0
@@ -182,8 +214,11 @@ def remove_item():
     product_id = data.get('product_id')
     size = data.get('size')  # Add size parameter
     
-    if not product_id or not size:
-        return jsonify({"error": "Product ID and size are required"}), 400
+    if not product_id:
+        return jsonify({"error": "Product ID is required"}), 400
+
+    # Convert "One Size" back to None for database query
+    db_size_value = None if size == "One Size" else size
 
     cursor = db.cursor(dictionary=True, buffered=True)
     try:
@@ -205,11 +240,18 @@ def remove_item():
         cart_id = cart['cart_id']
         
         # Remove all instances of this product with specific size from cart
-        cursor.execute("""
-            DELETE cp FROM cart_products cp
-            INNER JOIN products p ON cp.product_id = p.product_id
-            WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
-        """, (cart_id, product_id, size))
+        if db_size_value is None:
+            cursor.execute("""
+                DELETE cp FROM cart_products cp
+                INNER JOIN products p ON cp.product_id = p.product_id
+                WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size IS NULL
+            """, (cart_id, product_id))
+        else:
+            cursor.execute("""
+                DELETE cp FROM cart_products cp
+                INNER JOIN products p ON cp.product_id = p.product_id
+                WHERE cp.cart_id = %s AND cp.product_id = %s AND p.size = %s
+            """, (cart_id, product_id, db_size_value))
         
         db.commit()
         
@@ -223,6 +265,7 @@ def remove_item():
         cursor.close()
         db.close()
 
+# The rest of cart.py remains the same...
 @cart_bp.route("/api/checkout", methods=["POST"])
 def checkout():
     from app import get_db_connection
