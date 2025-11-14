@@ -50,13 +50,13 @@ CREATE TABLE IF NOT EXISTS orders(
   order_id INT PRIMARY KEY AUTO_INCREMENT,
   total DECIMAL(10,2) NOT NULL,
   discount_code VARCHAR(50),
-  order_status VARCHAR(20) NOT NULL,
-  order_date DATE NOT NULL,
+  order_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  order_date DATETIME NOT NULL,
   customer_id INT NOT NULL,
-  cart_product_id INT NOT NULL,
+  cart_id INT NOT NULL,
   payment_id INT NOT NULL,
   FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
-  FOREIGN KEY (cart_product_id) REFERENCES cart_products(cart_product_id),
+  FOREIGN KEY (cart_id) REFERENCES carts(cart_id),
   FOREIGN KEY (payment_id) REFERENCES payments(payment_id)
 );
 
@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS carts(
 SELECT * FROM admins;
 
 SELECT * FROM users;
+SELECT * FROM orders;
 
 SELECT * FROM products;
 
@@ -170,3 +171,8 @@ CREATE INDEX idx_sessions_sid ON sessions(sid);
 CREATE INDEX idx_sessions_sid_expiry ON sessions(sid, expiry);
 
 INSERT INTO cart_products (cart_id, product_id) VALUES (1, 880);
+
+
+DROP TABLE IF EXISTS orders;
+
+

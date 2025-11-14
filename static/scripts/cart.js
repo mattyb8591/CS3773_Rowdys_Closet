@@ -75,23 +75,72 @@ function renderCartItems() {
     document.getElementById("summaryItemCount").textContent = cartItems.length
 }
   
-function updateQuantity(id, change) {
-    const item = cartItems.find((item) => item.id === id)
-    if (item) {
-      item.quantity = Math.max(1, item.quantity + change)
-      if (item.quantity === 0) {
-        removeItem(id);
-        return;
-      }
-      renderCartItems()
-      updateSummary()
+async function updateQuantity(id, change) {
+    try {
+        const response = await fetch('/cart/api/update-quantity', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: id,
+                change: change
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            // Update local cart data
+            const item = cartItems.find((item) => item.id === id);
+            if (item) {
+                if (result.new_quantity === 0) {
+                    // Remove item from local cart if quantity becomes 0
+                    cartItems = cartItems.filter((item) => item.id !== id);
+                } else {
+                    item.quantity = result.new_quantity;
+                }
+            }
+            
+            renderCartItems();
+            updateSummary();
+            showToast('Cart updated successfully', 'success');
+        } else {
+            showToast(result.error || 'Error updating quantity', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating quantity:', error);
+        showToast('Error updating quantity', 'error');
     }
 }
   
-function removeItem(id) {
-    cartItems = cartItems.filter((item) => item.id !== id)
-    renderCartItems()
-    updateSummary()
+async function removeItem(id) {
+    try {
+        const response = await fetch('/cart/api/remove-item', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: id
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            // Remove item from local cart
+            cartItems = cartItems.filter((item) => item.id !== id);
+            renderCartItems();
+            updateSummary();
+            showToast('Item removed from cart', 'success');
+        } else {
+            showToast(result.error || 'Error removing item', 'error');
+        }
+    } catch (error) {
+        console.error('Error removing item:', error);
+        showToast('Error removing item', 'error');
+    }
 }
 
 async function applyPromoCode(promoCode) {
@@ -251,6 +300,169 @@ function removePromoCode() {
     updateSummary();
 }
 
+async function checkout() {
+    const paymentType = document.getElementById('paymentType')?.value;
+    const paymentDetails = document.getElementById('paymentDetails')?.value || '';
+
+    if (!paymentType) {
+        showToast('Please select a payment method', 'error');
+        return;
+    }
+
+    // Show loading state
+    const checkoutButton = document.querySelector('#checkoutModal .btn-primary');
+    if (checkoutButton) {
+        checkoutButton.disabled = true;
+        checkoutButton.textContent = 'Processing...';
+    }
+
+    try {
+        const response = await fetch('/cart/api/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                payment_type: paymentType,
+                payment_details: paymentDetails,
+                discount_code: appliedDiscount ? appliedDiscount.code : null  // Send discount code if applied
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showToast(result.message, 'success');
+            // Clear local cart
+            cartItems = [];
+            appliedDiscount = null;
+            discount = 0;
+            renderCartItems();
+            updateSummary();
+            
+            // Close payment modal
+            closePaymentModal();
+            
+            // Redirect to home or order confirmation page after delay
+            setTimeout(() => {
+                window.location.href = '/home';
+            }, 2000);
+        } else {
+            showToast(result.error || 'Error during checkout', 'error');
+            // Re-enable checkout button on error
+            if (checkoutButton) {
+                checkoutButton.disabled = false;
+                checkoutButton.textContent = 'Complete Purchase';
+            }
+        }
+    } catch (error) {
+        console.error('Error during checkout:', error);
+        showToast('Error during checkout', 'error');
+        // Re-enable checkout button on error
+        if (checkoutButton) {
+            checkoutButton.disabled = false;
+            checkoutButton.textContent = 'Complete Purchase';
+        }
+    }
+}
+
+function showPaymentModal() {
+    // Create a simple payment modal
+    const modal = document.createElement('div');
+    modal.className = 'modal fade show';
+    modal.style.display = 'block';
+    modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+    modal.style.position = 'fixed';
+    modal.style.top = '0';
+    modal.style.left = '0';
+    modal.style.width = '100%';
+    modal.style.height = '100%';
+    modal.style.zIndex = '9999';
+    modal.id = 'checkoutModal';
+    
+    const subtotal = calculateSubtotal();
+    const shippingCost = calculateShippingCost();
+    const tax = subtotal * TAX_RATE;
+    const total = subtotal + shippingCost + tax - discount;
+    
+    modal.innerHTML = `
+        <div class="modal-dialog" style="margin: 10% auto; max-width: 500px;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Complete Your Order</h5>
+                    <button type="button" class="btn-close" onclick="closePaymentModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="order-summary mb-3">
+                        <h6>Order Summary</h6>
+                        <div class="d-flex justify-content-between">
+                            <span>Items (${cartItems.length}):</span>
+                            <span>$${subtotal.toFixed(2)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Shipping:</span>
+                            <span>${shippingCost === 0 ? 'FREE' : '$' + shippingCost.toFixed(2)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Tax:</span>
+                            <span>$${tax.toFixed(2)}</span>
+                        </div>
+                        ${discount > 0 ? `
+                        <div class="d-flex justify-content-between text-success">
+                            <span>Discount:</span>
+                            <span>-$${discount.toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+                        <hr>
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Total:</span>
+                            <span>$${total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="paymentType" class="form-label">Payment Method</label>
+                        <select id="paymentType" class="form-select">
+                            <option value="">Select a payment method</option>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="debit_card">Debit Card</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="apple_pay">Apple Pay</option>
+                            <option value="google_pay">Google Pay</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="paymentDetails" class="form-label">Payment Details (Optional)</label>
+                        <input type="text" id="paymentDetails" class="form-control" placeholder="Additional payment information">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="checkout()">Complete Purchase</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Add backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop fade show';
+    document.body.appendChild(backdrop);
+}
+
+function closePaymentModal() {
+    const modal = document.getElementById('checkoutModal');
+    const backdrop = document.querySelector('.modal-backdrop');
+    
+    if (modal) {
+        modal.remove();
+    }
+    if (backdrop) {
+        backdrop.remove();
+    }
+}
+
 function setupEventListeners() {
     const shippingSelect = document.getElementById("shippingSelect");
     shippingSelect.addEventListener("change", (e) => {
@@ -296,9 +508,13 @@ function setupEventListeners() {
     });
   
     const checkoutButton = document.querySelector(".checkout-button");
-    checkoutButton.addEventListener("click", () => {
-      alert("Proceeding to checkout...");
-    });
+    checkoutButton.addEventListener("click", showPaymentModal);
+    
+    // Add event listener for remove promo button
+    const removeButton = document.getElementById("removePromo");
+    if (removeButton) {
+        removeButton.addEventListener("click", removePromoCode);
+    }
 }
 
 function showToast(message, type = 'info') {
