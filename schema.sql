@@ -167,6 +167,3 @@ CREATE TABLE sessions (
 );
 
 
-
-INSERT INTO cart_products (cart_id, product_id) VALUES (1, 880);
-
