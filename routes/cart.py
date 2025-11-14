@@ -23,44 +23,45 @@ def index():
     #grab all products that are in the users cart
     cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
     customer_id = cursor.fetchone()
+    # Check if a customer exists for the user
+    if customer_id is None:
+        user_cart_items = []
+        cart_items_json = json.dumps(user_cart_items)
+        return render_template("cart.html", cartItemsJson=cart_items_json)
+        
     customer_id = customer_id['customer_id']
     print(customer_id) #Debug log
     cursor.execute("SELECT cart_id FROM carts WHERE customer_id = %s", (customer_id,))
-    cart_id = cursor.fetchone()
-    cart_id = cart_id['cart_id']
-    query = """ 
-    
-    SELECT products.product_id as id, 
-    products.name as name, 
-    products.img_file_path as image, 
-    products.price as price, 
-    products.size as size, 
-    products.type as category,
-    COUNT(products.product_id) AS quantity
-    FROM cart_products 
-    INNER JOIN products ON cart_products.product_id = products.product_id 
-    WHERE cart_products.cart_id = %s
-    GROUP BY products.product_id
+    cart_id_data = cursor.fetchone()
 
-    """
-    cursor.execute(query,(cart_id,))
-    
-    user_cart_items = cursor.fetchall()
-    print(user_cart_items) #Debug log
-    if not user_cart_items :
-        print("No items found in cart")
-        jsonify([])
+    # Check if a cart exists for the customer
+    if cart_id_data is None:
+        user_cart_items = []
+    else:
+        cart_id = cart_id_data['cart_id']
+        query = """ 
         
-        return render_template("cart.html", cartItems=[])
-    cursor.close()
+        SELECT products.product_id as id, 
+        products.name as name, 
+        products.img_file_path as image, 
+        products.price as price, 
+        products.size as size, 
+        products.type as category,
+        COUNT(products.product_id) AS quantity
+        FROM cart_products 
+        INNER JOIN products ON cart_products.product_id = products.product_id 
+        WHERE cart_products.cart_id = %s
+        GROUP BY products.product_id
 
+        """
+        cursor.execute(query,(cart_id,))
+        user_cart_items = cursor.fetchall()
+    
+    print(user_cart_items) #Debug log
+    cursor.close()
     db.close()
     
+    cart_items_json = json.dumps(user_cart_items)
 
-    #return a list of all products to be rendered
     if request.method == 'GET':
-        cart_items=request.form.get("cartItems")
-        print(cart_items)
-        print(user_cart_items)
-        return render_template("cart.html", cartItems=user_cart_items)
-    
+        return render_template("cart.html", cartItemsJson=cart_items_json)

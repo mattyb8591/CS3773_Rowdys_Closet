@@ -1,47 +1,23 @@
-// Initial cart data
-let cartItems = [
-  {
-      id: 1,
-      name: "UTSA Roadrunners Jersey",
-      category: "Apparel",
-      price: 64.99,
-      quantity: 2,
-      image: "/utsa-jersey-apparel.jpg",
-    },
-    {
-      id: 2,
-      name: "UTSA Baseball Cap",
-      category: "Accessories",
-      price: 29.99,
-      quantity: 1,
-      image: "/utsa-cap-accessory.jpg",
-    },
-    {
-      id: 3,
-      name: "UTSA Hoodie",
-      category: "Apparel",
-      price: 54.99,
-      quantity: 1,
-      image: "/utsa-hoodie-apparel.jpg",
-    },
-]
-cartItems = [];
+let cartItems = typeof initialCartData !== 'undefined' ? initialCartData : [];
   
+const TAX_RATE = 0.0825; 
+let shipping = "standard" 
+let discount = 0; 
 
-  
-  let shipping = "standard"
-  
 function init() {
     renderCartItems()
     updateSummary()
     setupEventListeners()
-  }
+}
   
   
-  function renderCartItems() {
+function renderCartItems() {
     const cartItemsContainer = document.getElementById("cartItems")
     cartItemsContainer.innerHTML = ""
 
+    if (cartItems.length === 0) {
+        cartItemsContainer.innerHTML = '<div class="empty-cart-message">Your cart is empty. Continue shopping to add items.</div>';
+    }
   
     cartItems.forEach((item) => {
       const itemElement = document.createElement("div")
@@ -84,40 +60,58 @@ function init() {
   
     document.getElementById("itemCount").textContent = `${cartItems.length} Items`
     document.getElementById("summaryItemCount").textContent = cartItems.length
-  }
+}
   
   
-  function updateQuantity(id, change) {
+function updateQuantity(id, change) {
     const item = cartItems.find((item) => item.id === id)
     if (item) {
       item.quantity = Math.max(1, item.quantity + change)
+      if (item.quantity === 0) {
+        removeItem(id);
+        return;
+      }
       renderCartItems()
       updateSummary()
     }
-  }
+}
   
   
-  function removeItem(id) {
+function removeItem(id) {
     cartItems = cartItems.filter((item) => item.id !== id)
     renderCartItems()
     updateSummary()
-  }
-  
-  function updateSummary() {
+}
+
+function updateSummary() {
     const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  
+    
+    const tax = subtotal * TAX_RATE;
+
     let shippingCost = 0
     if (shipping === "standard") shippingCost = 5.0
     else if (shipping === "express") shippingCost = 15.0
-  
-    const total = subtotal + shippingCost
-  
+    
+    const total = subtotal + tax + shippingCost - discount;
+
     document.getElementById("subtotal").textContent = `$${subtotal.toFixed(2)}`
+    document.getElementById("taxCost").textContent = `$${tax.toFixed(2)}`
+    document.getElementById("discountCost").textContent = `-$${discount.toFixed(2)}`
+    
+    const shippingDisplay = document.getElementById("shippingCostDisplay");
+    if (shipping === "standard") {
+        shippingDisplay.textContent = "$5.00";
+    } else if (shipping === "express") {
+        shippingDisplay.textContent = "$15.00";
+    } else {
+        shippingDisplay.textContent = "FREE";
+    }
+
     document.getElementById("totalCost").textContent = `$${total.toFixed(2)}`
-  }
+}
   
   
-  function setupEventListeners() {
+function setupEventListeners() {
     const shippingSelect = document.getElementById("shippingSelect")
     shippingSelect.addEventListener("change", (e) => {
       shipping = e.target.value
@@ -134,7 +128,21 @@ function init() {
     applyButton.addEventListener("click", () => {
       const promoCode = promoInput.value.trim()
       if (promoCode) {
-        alert(`Promo code "${promoCode}" applied!`)
+        const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+        
+        if (promoCode.toUpperCase() === "ROWDY20") {
+            discount = 20.00; 
+            alert(`Promo code "${promoCode}" applied! $20.00 fixed discount added.`)
+        } else if (promoCode.toUpperCase() === "UTSA10") {
+            discount = subtotal * 0.10; 
+            alert(`Promo code "${promoCode}" applied! 10% discount added.`)
+        } 
+        else {
+            discount = 0;
+            alert(`Promo code "${promoCode}" invalid or no discount applied.`)
+        }
+
+        updateSummary(); 
         promoInput.value = ""
         applyButton.disabled = true
       }
@@ -144,9 +152,7 @@ function init() {
     checkoutButton.addEventListener("click", () => {
       alert("Proceeding to checkout...")
     })
-  }
-  console.log(cartItems.length);
+}
   
-  
- document.addEventListener("DOMContentLoaded", init)
+document.addEventListener("DOMContentLoaded", init)
   

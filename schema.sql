@@ -158,3 +158,8 @@ CREATE TABLE sessions (
     expiry DATETIME NOT NULL,
     is_permanent BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+CREATE INDEX idx_sessions_expiry ON sessions(expiry);
+CREATE INDEX idx_sessions_sid ON sessions(sid);
+CREATE INDEX idx_sessions_sid_expiry ON sessions(sid, expiry);
+
