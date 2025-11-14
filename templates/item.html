@@ -15,10 +15,18 @@
             {% endif %}
             <h1>{{ item.name }}</h1>
             <p class="price">${{ '%.2f'|format(item.price) }}</p>
-            <p>Size: {{ item.size }}</p>
             <p>Type: {{ item.type }}</p>
             <p>Stock: {{ item.stock }}</p>
             <p>{{ item.description }}</p>
+            <form id="sizeSelect" method="post">
+                <label for="sizeDropdown">Select a size:</label>
+                <select id="sizeDropdown" name="sizeDropdown">
+                    {% for item in options %}
+                    <option value="{{ item }}">{{ item }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">Add to Cart</button>
+            </form>
             <!-- add an Add to Cart form/button here if desired -->
         </div>
     </main>

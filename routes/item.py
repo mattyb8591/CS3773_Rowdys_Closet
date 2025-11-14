@@ -5,15 +5,57 @@ from werkzeug.security import check_password_hash
 
 item_bp = Blueprint("item", __name__, template_folder="templates", static_folder="static")
 
-@item_bp.route("/<int:item_id>", methods=["GET"])
+@item_bp.route("/<int:item_id>", methods=["GET", "POST"])
 def index(item_id):
     #db connection
 
     db = current_app.get_db_connection()
 
     cursor = db.cursor(dictionary=True)
+    #get data for selected item
     cursor.execute("SELECT * FROM products WHERE product_id = %s", (item_id,))
     item_data = cursor.fetchone()
+    # Fetch size options for the item
+    cursor.execute("SELECT product_id, size, stock FROM products WHERE name = %s AND type=%s", (item_data['name'],item_data['type']))
+    size_selector_data = cursor.fetchall()
+    select_size_list = []
+    selectedProduct = None
+
+    # Create a list of available sizes
+    for dictionary in size_selector_data:
+        if dictionary['stock'] > 0:
+            select_size_list.append(dictionary['size'])
+    # Handle POST request to add item to cart
+    if request.method == "POST":
+        selectedProduct = request.form.get('sizeDropdown')
+        print("Selected Product ID:", selectedProduct)
+        cursor.execute("SELECT product_id FROM products WHERE name = %s AND type = %s AND size = %s", (item_data['name'], item_data['type'], selectedProduct))
+        
+        selectedProductID= cursor.fetchone()
+        selectedProductID= selectedProductID['product_id']  
+        # Get customer ID and cart id from session user_id
+        cursor.execute("SELECT customer_id FROM customers WHERE user_id = %s", (session['user_id'],))
+        customer = cursor.fetchone()
+            
+        if not customer:
+            return jsonify({"error": "Customer not found"}), 404
+                
+        customer_id = customer['customer_id']
+            
+        cursor.execute("SELECT cart_id FROM carts WHERE customer_id = %s", (customer_id,))
+        cart = cursor.fetchone()
+            
+        if not cart:
+            return jsonify({"error": "Cart not found"}), 404
+                
+        cart_id = cart['cart_id']
+        print("Cart ID:", cart_id)
+        #put selected product into cart_products
+        cursor.execute("INSERT INTO cart_products (cart_id, product_id) VALUES( %s, %s)", ( cart_id, selectedProductID))
+        db.commit()
+
+
+        print("Selected Product ID from DB:", selectedProductID)
     cursor.close()
     db.close()
 
@@ -21,7 +63,7 @@ def index(item_id):
         abort(404)
 
     # pass full product dict to template
-    return render_template("item.html", item=item_data)
+    return render_template("item.html", item=item_data, options=select_size_list)
     
 #!!!!!!!!THE CODE BELOW IS item.py BEFORE I (Roman) EDITED IT, JUST IN CASE!!!!!!!!
 # from flask import Flask, render_template, jsonify, request, Blueprint, redirect, current_app,session
