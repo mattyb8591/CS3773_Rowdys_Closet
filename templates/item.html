@@ -32,7 +32,7 @@
 
     <main class="product-container">
         <div class="product-image">
-            <img src="./img/utsa-hoodie.png" alt="Premium UTSA Hoodie">
+            <img src="{{ item.img_file_path }}" alt="{{ item.name }}" onerror="this.style.display='none'">
         </div>
 
         <div class="product-details">
