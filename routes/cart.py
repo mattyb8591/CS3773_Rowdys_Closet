@@ -265,7 +265,6 @@ def remove_item():
         cursor.close()
         db.close()
 
-# The rest of cart.py remains the same...
 @cart_bp.route("/api/checkout", methods=["POST"])
 def checkout():
     from app import get_db_connection
@@ -281,8 +280,8 @@ def checkout():
     data = request.json
     payment_type = data.get('payment_type')
     payment_details = data.get('payment_details', '')
-    discount_code = data.get('discount_code')  # Get discount code from request
-    shipping_method = data.get('shipping_method', 'standard')  # Get shipping method from request
+    discount_code = data.get('discount_code')
+    shipping_method = data.get('shipping_method', 'standard')
     
     if not payment_type:
         return jsonify({"error": "Payment type is required"}), 400
@@ -305,6 +304,40 @@ def checkout():
             return jsonify({"error": "Cart not found"}), 404
             
         current_cart_id = current_cart['cart_id']
+        
+        # Get all cart items with their quantities and sizes
+        cursor.execute("""
+            SELECT 
+                p.product_id,
+                p.size,
+                COUNT(*) as quantity,
+                p.stock as current_stock
+            FROM cart_products cp
+            INNER JOIN products p ON cp.product_id = p.product_id 
+            WHERE cp.cart_id = %s
+            GROUP BY p.product_id, p.size
+        """, (current_cart_id,))
+        
+        cart_items = cursor.fetchall()
+        
+        # Check stock availability and update stock
+        for item in cart_items:
+            product_id = item['product_id']
+            quantity = item['quantity']
+            current_stock = item['current_stock']
+            size = item['size']
+            
+            # Check if enough stock is available
+            if current_stock < quantity:
+                return jsonify({
+                    "error": f"Not enough stock for product ID {product_id} (size: {size or 'One Size'}). Available: {current_stock}, Requested: {quantity}"
+                }), 400
+            
+            # Update stock for this product
+            cursor.execute(
+                "UPDATE products SET stock = stock - %s WHERE product_id = %s",
+                (quantity, product_id)
+            )
         
         # Calculate subtotal from cart items
         cursor.execute("""
@@ -330,7 +363,6 @@ def checkout():
             shipping_cost = 5.0
         elif shipping_method == "express":
             shipping_cost = 15.0
-        # pickup is free (0.0)
         
         # Calculate total before discount (subtotal + tax + shipping)
         total_before_discount = subtotal_float + tax_amount + shipping_cost
@@ -351,19 +383,15 @@ def checkout():
             discount = cursor.fetchone()
             
             if discount:
-                # Convert discount values to appropriate types
                 discount_value = float(discount['value'])
                 min_purchase = float(discount['min_purchase']) if discount['min_purchase'] else 0.0
                 
-                # Check minimum purchase requirement (based on subtotal as per e-commerce standards)
                 if not discount['min_purchase'] or subtotal_float >= min_purchase:
                     applied_discount_code = discount_code
                     
                     if discount['discount_type'] == 'percentage':
-                        # Percentage discounts apply to subtotal only (typical e-commerce practice)
                         discount_amount = subtotal_float * (discount_value / 100)
-                    else:  # fixed amount
-                        # Fixed discounts apply to the total (including tax and shipping)
+                    else:
                         discount_amount = min(discount_value, total_before_discount)
                     
                     final_total = max(0, total_before_discount - discount_amount)
@@ -398,9 +426,6 @@ def checkout():
         
         # Delete all cart_products for this cart (clear the cart contents)
         cursor.execute("DELETE FROM cart_products WHERE cart_id = %s", (current_cart_id,))
-        
-        # We don't create a new cart - the customer will keep using the same cart ID
-        # but it will be empty after checkout
         
         db.commit()
         

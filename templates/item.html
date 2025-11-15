@@ -1,105 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{{ item.name }} — Rowdy's Closet</title>
-        <link 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rowdy Closet - {{ item.name }}</title>
+    <link 
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
         rel="stylesheet" 
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" 
         crossorigin="anonymous"
-      >
-        <link rel="stylesheet" href="../static/css/item.css">
-      </head>
-      
+    >
+    <link rel="stylesheet" href="../static/css/item.css">
+</head>
 <body>
-
-
     <header>
         <div class="nav-bar">
-          <div class="nav-inner">
-            <div class="nav-left">
-              <img src="../static/img/logo.png" class="nav-logo" alt="Rowdy's Closet logo">
+            <div class="nav-inner">
+                <div class="nav-left">
+                    <img src="../static/img/logo.png" class="nav-logo" alt="Rowdy's Closet logo">
+                </div>
+                <ul class="nav-links">
+                    <li><a href="{{ url_for('home.index') }}">Home</a></li>
+                    <li><a href="{{ url_for('cart.index') }}" class="active">Checkout</a></li>
+                    <li><a href="{{ url_for('profile.index') }}">Profile</a></li>
+                </ul>
             </div>
-            <ul class="nav-links">
-              <li><a href="{{ url_for('home.index') }}">Home</a></li>
-              <li><a href="{{ url_for('cart.index') }}" class="active">Checkout</a></li>
-              <li><a href="{{ url_for('profile.index') }}">Profile</a></li>
-            </ul>
-          </div>
         </div>
-      </header>
+    </header>
 
     <main class="product-container">
         <form id="selectForm" method="post">
-        <div class="product-image">
-            <img src="{{item.img_file_path}}" alt="Premium UTSA Hoodie">
-        </div>
-
-        <div class="product-details">
-            <div class="product-header">
-                <h2>{{ item.name }}</h2>
+            <div class="product-image">
+                <img src="{{item.img_file_path}}" alt="Premium UTSA Hoodie">
             </div>
 
-            <div class="pricing">
-                <span class="price">${{ '%.2f'|format(item.price) }}</span>
-            </div>
+            <div class="product-details">
+                <div class="product-header">
+                    <h2>{{ item.name }}</h2>
+                </div>
 
-            <div class="description">
-                <p>{{ item.description }}</p>
-                <ul style="margin-top: 1rem; margin-left: 1.5rem; color: #555;">
-                </ul>
-            </div>
+                <div class="pricing">
+                    <span class="price">${{ '%.2f'|format(item.price) }}</span>
+                </div>
 
-            <!-- updated size selector to only show S, M, L -->
-            <div class="form-group">
+                <div class="description">
+                    <p>{{ item.description }}</p>
+                    <ul style="margin-top: 1rem; margin-left: 1.5rem; color: #555;">
+                    </ul>
+                </div>
+
+                <!-- Size selector - only show for products with multiple sizes -->
+                {% if not is_one_size %}
+                <div class="form-group">
                     <label for="sizeDropdown">Size:</label>
-                    <select id="sizeDropdown" name="sizeDropdown">
+                    <select id="sizeDropdown" name="sizeDropdown" required>
                         <option value="">Select Size</option>
                         {% for item in options %}
                         <option value="{{ item }}">{{ item }}</option>
                         {% endfor %}
                     </select>
-            </div>
+                </div>
+                {% else %}
+                <!-- Display "One Size" for products that don't have size variations -->
+                <div class="form-group">
+                    <label>Size:</label>
+                    <div class="one-size-display">
+                        <strong>One Size</strong>
+                        <input type="hidden" name="sizeDropdown" value="One Size">
+                    </div>
+                </div>
+                {% endif %}
 
+                <!-- Stock quantity display -->
+                <div class="stock-status" id="stockStatus">
+                    <span class="stock-label">In Stock:</span>
+                    <span class="stock-qty" id="stockQty">{{ item.stock }}</span>
+                </div>
 
-            <!-- added stock quantity display -->
-            <div class="stock-status" id="stockStatus">
-                <span class="stock-label">In Stock:</span>
-                <span class="stock-qty" id="stockQty">{{ item.stock }}</span>
-            </div>
+                <!-- Sold out message (hidden by default) -->
+                <div class="sold-out-message" id="soldOutMessage" style="display: none;">
+                    <span>Sold Out</span>
+                </div>
 
-            <!-- added sold out message (hidden by default) -->
-            <div class="sold-out-message" id="soldOutMessage" style="display: none;">
-                <span>Sold Out</span>
-            </div>
+                <div class="quantity-section">
+                    <label for="quantity">Quantity:</label>
+                    <div class="quantity-selector">
+                        <button type="button" class="quantity-btn" id="decrease-qty">−</button>
+                        <input type="number" id="quantity" name="quantity" value="1" min="1" max="10" readonly>
+                        <button type="button" class="quantity-btn" id="increase-qty">+</button>
+                    </div>
+                </div>
 
-            <div class="quantity-section">
-                <label for="quantity">Quantity:</label>
-                <div class="quantity-selector">
-                    <button class="quantity-btn" id="decrease-qty">−</button>
-                    <input type="number" id="quantity" value="1" min="1" max="10">
-                    <button class="quantity-btn" id="increase-qty">+</button>
+                <div class="action-buttons">
+                    <button type="submit" class="add-to-cart-btn" id="addToCartBtn">Add to Cart</button>
                 </div>
             </div>
-
-            <div class="action-buttons">
-                <button type="submit" class="add-to-cart-btn">Add to Cart</button>
-            </div>
-        </div>
         </form>
     </main>
 
     <script>
-        let stockQuantity = 45; // Set initial stock quantity
+        let stockQuantity = {{ item.stock }}; // Use actual stock from item data
 
         const decreaseBtn = document.getElementById('decrease-qty');
         const increaseBtn = document.getElementById('increase-qty');
         const quantityInput = document.getElementById('quantity');
-        const addToCartBtn = document.querySelector('.add-to-cart-btn');
+        const addToCartBtn = document.getElementById('addToCartBtn');
         const stockStatus = document.getElementById('stockStatus');
         const soldOutMessage = document.getElementById('soldOutMessage');
+        const sizeDropdown = document.getElementById('sizeDropdown');
+        const form = document.getElementById('selectForm');
 
         function updateStockDisplay() {
             if (stockQuantity === 0) {
@@ -120,34 +129,33 @@
             }
         }
 
+        function updateQuantity(change) {
+            const current = parseInt(quantityInput.value);
+            const newValue = current + change;
+            
+            if (newValue >= parseInt(quantityInput.min) && newValue <= parseInt(quantityInput.max)) {
+                quantityInput.value = newValue;
+            }
+        }
+
+        // Only validate size selection for products that have multiple sizes
+        form.addEventListener('submit', function(event) {
+            {% if not is_one_size %}
+            // Only run validation for products that require size selection
+            if (!sizeDropdown.value) {
+                event.preventDefault();
+                alert('Please select a size before adding to cart.');
+                sizeDropdown.focus();
+            }
+            {% endif %}
+        });
+
+        // Quantity button event listeners
+        decreaseBtn.addEventListener('click', () => updateQuantity(-1));
+        increaseBtn.addEventListener('click', () => updateQuantity(1));
+
+        // Initialize display
         updateStockDisplay();
-
-        decreaseBtn.addEventListener('click', () => {
-            const current = parseInt(quantityInput.value);
-            if (current > 1) {
-                quantityInput.value = current - 1;
-            }
-        });
-
-        increaseBtn.addEventListener('click', () => {
-            const current = parseInt(quantityInput.value);
-            if (current < 10) {
-                quantityInput.value = current + 1;
-            }
-        });
-
-        addToCartBtn.addEventListener('click', () => {
-            const size = document.getElementById('size').value;
-            const color = document.getElementById('color').value;
-            const quantity = document.getElementById('quantity').value;
-
-            if (!size || !color) {
-                alert('Please select size and color');
-                return;
-            }
-
-            alert(`Added ${quantity} item(s) to cart!\nSize: ${size}\nColor: ${color}`);
-        });
     </script>
 </body>
 </html>

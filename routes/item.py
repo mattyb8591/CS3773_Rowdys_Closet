@@ -26,7 +26,10 @@ def index(item_id):
     select_size_list = []
     selectedProduct = None
 
-    # Create a list of available sizes
+    # Check if this is a "One Size" product (NULL size in database)
+    is_one_size_product = item_data['size'] is None
+    
+    # Create a list of available sizes (only for products with multiple sizes)
     for dictionary in size_selector_data:
         if dictionary['stock'] > 0:
             # Handle NULL size (one size products)
@@ -35,10 +38,20 @@ def index(item_id):
     
     # Handle POST request to add item to cart
     if request.method == "POST":
-        selectedProduct = request.form.get('sizeDropdown')
-        print("Selected Product Size:", selectedProduct)
+        # For "One Size" products, automatically set the size to "One Size"
+        if is_one_size_product:
+            selectedProduct = "One Size"
+            quantity = int(request.form.get('quantity', 1))
+        else:
+            # For products with multiple sizes, get the selected size from dropdown
+            selectedProduct = request.form.get('sizeDropdown')
+            quantity = int(request.form.get('quantity', 1))
         
-        if not selectedProduct:
+        print("Selected Product Size:", selectedProduct)
+        print("Quantity:", quantity)
+        
+        # Only validate size selection for products that have multiple sizes
+        if not is_one_size_product and not selectedProduct:
             cursor.close()
             db.close()
             return jsonify({"error": "No size selected"}), 400
@@ -86,15 +99,22 @@ def index(item_id):
         cart_id = cart['cart_id']
         print("Cart ID:", cart_id)
         
-        #put selected product into cart_products
-        cursor.execute("INSERT INTO cart_products (cart_id, product_id) VALUES(%s, %s)", (cart_id, selectedProductID))
+        # Add multiple items to cart based on quantity
+        for _ in range(quantity):
+            cursor.execute("INSERT INTO cart_products (cart_id, product_id) VALUES(%s, %s)", (cart_id, selectedProductID))
+        
         db.commit()
 
-        print("Selected Product ID from DB:", selectedProductID)
+        print(f"Added {quantity} items to cart")
+        
+        # Redirect to cart page after successful addition
+        cursor.close()
+        db.close()
+        return redirect('/cart')
     
     cursor.close()
     db.close()
     print("item_data being sent to template:", item_data)
 
-    # pass full product dict to template
-    return render_template("item.html", item=item_data, options=select_size_list)
+    # pass full product dict to template and indicate if it's a one-size product
+    return render_template("item.html", item=item_data, options=select_size_list, is_one_size=is_one_size_product)

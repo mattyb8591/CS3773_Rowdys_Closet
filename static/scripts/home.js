@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', function () {
     
     loadProducts();
     setTimeout(initializeScrollers, 100);
+
+    // Initialize search functionality
+    initializeSearch();
 });
 
 let productsCache = {};    // cached API data keyed by type
@@ -170,79 +173,86 @@ function createProductCard(product) {
     return card;
 }
 
+function initializeSearch() {
+    const submit = document.getElementById('search-submit');
+    const searchInput = document.getElementById('site-search');
 
-async function searchRequest(searchText, searchForm){
-
-    //POST data to '/home/searchrequest'
-    
-    
-    try {   
-      const response = await fetch("/home/searchrequest", {
-        method: "POST",
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({search_data: searchText})
-      });
-
-      //const result = await response.json();
-
-      if (response.ok) {
-        
-        searchForm.reset();
-
-        /*setTimeout(() => {
-          window.location.href = "/"; 
-        }, 2000);*/
-
-      } else {
-        console.log("Error with sending search request to home.py");
-      }
-    } catch (error) {
-      console.error("Fetch error:", error);
+    if (submit) {
+        submit.addEventListener("click", handleSearch, false);
     }
 
-    //GET results from '/home/searchrequest'
-    let searchResults = await getSearchResults();
-    console.log(searchResults);
-    //Change dom based on the request
-
-    Object.keys(productsCache).forEach(k => delete productsCache[k]); // clear old values
-    Object.assign(productsCache, searchResults);    
-
-    //render the searched products
-    renderProducts();
-    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleSearch(e);
+            }
+        });
+    }
 }
 
-async function getSearchResults(){
+function handleSearch(event) {
+    event.preventDefault();
+    
+    const searchInput = document.getElementById('site-search');
+    const searchText = searchInput.value.trim();
+    
+    if (searchText) {
+        // Redirect to search page with the query
+        window.location.href = `/search/search?q=${encodeURIComponent(searchText)}`;
+    }
+}
 
-    let request_data = null;
+function initializeScrollers() {
+    // Initialize horizontal scrollers if needed
+    document.querySelectorAll('.product-scroller').forEach(scroller => {
+        if (scroller.scrollWidth > scroller.clientWidth) {
+            // Add navigation buttons if content overflows
+            addScrollerNavigation(scroller);
+        }
+    });
+}
 
-    const getResults = await fetch("/home/searchresult")
-    .then(getResults => {
-            console.log('API response of searched products:', getResults.status);
-            if (!getResults.ok) {
-                throw new Error(`HTTP error! status: ${getResults.status}`);
-            }
-            return getResults.json();
-    })
-    .then(data => {
-        console.log(data);
-        request_data = data;
-    })
-    .catch(error => {
-            console.error('Error getting searched products:', error);
+function addScrollerNavigation(scroller) {
+    const wrapper = scroller.parentElement;
+    
+    // Create previous button
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'scroller-btn scroller-prev';
+    prevBtn.innerHTML = '‹';
+    prevBtn.setAttribute('aria-label', 'Scroll left');
+    
+    // Create next button
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'scroller-btn scroller-next';
+    nextBtn.innerHTML = '›';
+    nextBtn.setAttribute('aria-label', 'Scroll right');
+    
+    // Add buttons to wrapper
+    wrapper.style.position = 'relative';
+    wrapper.appendChild(prevBtn);
+    wrapper.appendChild(nextBtn);
+    
+    // Add event listeners
+    prevBtn.addEventListener('click', () => {
+        scroller.scrollBy({ left: -300, behavior: 'smooth' });
     });
     
-    return request_data;
+    nextBtn.addEventListener('click', () => {
+        scroller.scrollBy({ left: 300, behavior: 'smooth' });
+    });
+    
+    // Update button visibility based on scroll position
+    function updateButtonVisibility() {
+        prevBtn.style.display = scroller.scrollLeft > 0 ? 'flex' : 'none';
+        nextBtn.style.display = scroller.scrollLeft < (scroller.scrollWidth - scroller.clientWidth) ? 'flex' : 'none';
+    }
+    
+    scroller.addEventListener('scroll', updateButtonVisibility);
+    updateButtonVisibility();
+    
+    // Also update on window resize
+    window.addEventListener('resize', updateButtonVisibility);
 }
 
-const submit = document.getElementById('search-submit');
-
-submit.addEventListener("click", async (event) => {
-    const elSearch = document.getElementById('site-search').value;
-    const searchForm = document.getElementById('searchBarGroup');
-    event.preventDefault();
-    await searchRequest(elSearch, searchForm);
-}, false);
+// Remove the old search functionality that was here
+// The new search simply redirects to the search page
