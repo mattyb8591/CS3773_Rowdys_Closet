@@ -3,6 +3,7 @@ import os
 from werkzeug.security import check_password_hash, generate_password_hash
 import mysql.connector
 from mysql.connector import Error
+from datetime import datetime, timedelta
 
 admin_bp = Blueprint("admin", __name__, template_folder="templates", static_folder="static")
 
@@ -33,9 +34,9 @@ def require_admin():
 
 @admin_bp.route("/")
 def index():
-    print("Admin index: Rendering admin page")
-    return render_template("admin.html")
-    
+    print("Admin index: Redirecting to dashboard")
+    return redirect(url_for('admin.dashboard'))
+
 @admin_bp.route("/dashboard")
 def dashboard(): 
     conn = get_db_connection()
@@ -105,6 +106,54 @@ def new_discount():
             return redirect(url_for('admin.discount_list'))
     
     return render_template("new-discount.html")
+
+def calculate_order_status(order_date, shipping_method):
+    """Calculate order status based on time elapsed and shipping method"""
+    now = datetime.now()
+    
+    # Handle both string and datetime objects
+    if isinstance(order_date, str):
+        try:
+            order_datetime = datetime.strptime(order_date, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            try:
+                order_datetime = datetime.strptime(order_date, '%Y-%m-%d')
+            except ValueError:
+                order_datetime = now
+    else:
+        order_datetime = order_date
+    
+    hours_since_order = (now - order_datetime).total_seconds() / 3600
+    
+    if shipping_method == 'express':
+        if hours_since_order < 1:
+            return 'Processing'
+        elif hours_since_order < 6:
+            return 'Shipped'
+        elif hours_since_order < 24:
+            return 'Out for Delivery'
+        else:
+            return 'Delivered'
+    
+    elif shipping_method == 'standard':
+        if hours_since_order < 4:
+            return 'Processing'
+        elif hours_since_order < 24:
+            return 'Shipped'
+        elif hours_since_order < 72:
+            return 'In Transit'
+        else:
+            return 'Delivered'
+    
+    elif shipping_method == 'pickup':
+        if hours_since_order < 2:
+            return 'Processing'
+        elif hours_since_order < 6:
+            return 'Ready for Pickup'
+        else:
+            return 'Picked Up'
+    
+    return 'Processing'
 
 # API Routes for User Management
 @admin_bp.route("/api/users")
@@ -690,7 +739,8 @@ def api_orders():
                 u.username,
                 o.payment_id,
                 p.payment_type,
-                o.shipping_method
+                o.shipping_method,
+                o.order_status
             FROM orders o
             LEFT JOIN customers c ON o.customer_id = c.customer_id
             LEFT JOIN users u ON c.user_id = u.user_id
@@ -698,6 +748,14 @@ def api_orders():
             ORDER BY o.order_date DESC
         """)
         orders = cursor.fetchall()
+        
+        # Calculate dynamic status for each order
+        for order in orders:
+            if order['order_status'] == 'completed':  # Only calculate for completed orders
+                order['dynamic_status'] = calculate_order_status(order['order_date'], order.get('shipping_method', 'standard'))
+            else:
+                order['dynamic_status'] = order['order_status']
+        
         cursor.close()
         conn.close()
         return jsonify(orders)
@@ -738,6 +796,12 @@ def api_order_detail(order_id):
         order = cursor.fetchone()
         
         if order:
+            # Calculate dynamic status
+            if order['status'] == 'completed':
+                order['dynamic_status'] = calculate_order_status(order['order_date'], order.get('shipping_method', 'standard'))
+            else:
+                order['dynamic_status'] = order['status']
+            
             # Get order items
             cursor.execute("""
                 SELECT 

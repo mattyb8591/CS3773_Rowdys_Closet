@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, session
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, session, flash
 
 login_bp = Blueprint("login", __name__, template_folder="templates", static_folder="static")
 
@@ -11,18 +11,22 @@ def login():
         else:
             return redirect(url_for("home.index"))
 
+    error_message = None  # Initialize error message variable
+
     if request.method == 'GET':
-        return render_template("index.html")
+        return render_template("index.html", error_message=error_message)
 
     username = request.form.get('username')
     password = request.form.get('password')
 
     if not username or not password:
-        return jsonify({"success": False, "message": "Please fill in all fields."}), 400
+        error_message = "Please fill in all fields."
+        return render_template("index.html", error_message=error_message), 400
 
     db = current_app.get_db_connection()
     if not db:
-        return jsonify({"success": False, "message": "Database connection failed."}), 500
+        error_message = "Database connection failed. Please try again."
+        return render_template("index.html", error_message=error_message), 500
         
     cursor = db.cursor(dictionary=True)
     cursor.execute("SELECT * FROM users WHERE username = %s AND password = %s", (username, password))
@@ -31,7 +35,8 @@ def login():
     if user is None:
         cursor.close()
         db.close()
-        return jsonify({"success": False, "message": "Invalid username or password."}), 401
+        error_message = "Invalid username or password."
+        return render_template("index.html", error_message=error_message), 401
     
     cursor.execute("SELECT * FROM admins WHERE user_id = %s", (user["user_id"],))
     adminRow = cursor.fetchone()
@@ -60,9 +65,7 @@ def login():
     # Create a response with redirect to ensure session is saved
     if adminRow:
         print("Redirecting to admin index")
-        response = redirect(url_for("admin.index"))
-        return response
+        return redirect(url_for("admin.index"))
     else:
         print("Redirecting to home index")
-        response = redirect(url_for("home.index"))
-        return response
+        return redirect(url_for("home.index"))
