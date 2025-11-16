@@ -8,11 +8,12 @@ let appliedDiscount = null;
 function init() {
     console.log('Initial cart data:', initialCartData); // Debug log
     
-    // Convert string prices to numbers
+    // Convert string prices to numbers and ensure discount is set
     cartItems = cartItems.map(item => ({
         ...item,
         price: parseFloat(item.price) || 0,
-        quantity: parseInt(item.quantity) || 1
+        quantity: parseInt(item.quantity) || 1,
+        discount: parseFloat(item.discount) || 0  // Ensure discount is a number
     }));
     
     console.log('Processed cart items:', cartItems); // Debug log
@@ -25,7 +26,7 @@ function renderCartItems() {
     const cartItemsContainer = document.getElementById("cartItems")
     cartItemsContainer.innerHTML = ""
 
-    console.log('Rendering cart items:', cartItems); // Debug log
+    console.log('Rendering cart items:', cartItems);
 
     if (cartItems.length === 0) {
         cartItemsContainer.innerHTML = '<div class="empty-cart-message">Your cart is empty. Continue shopping to add items.</div>';
@@ -33,7 +34,27 @@ function renderCartItems() {
     }
   
     cartItems.forEach((item) => {
-        console.log('Rendering item:', item); // Debug each item
+        console.log('Rendering item:', item);
+        
+        const hasDiscount = item.discount && item.discount > 0;
+        
+        // item.price is already the discounted price
+        let priceDisplay = `$${item.price.toFixed(2)}`;
+        let totalDisplay = `$${(item.price * item.quantity).toFixed(2)}`;
+
+        // Show original vs discounted price for display purposes only
+        if (hasDiscount && item.original_price) {
+            const originalPrice = parseFloat(item.original_price);
+            const currentPrice = item.price; // Already discounted
+            priceDisplay = `
+                <div class="price-with-discount">
+                    <span class="original-price">$${originalPrice.toFixed(2)}</span>
+                    <span class="discounted-price">$${currentPrice.toFixed(2)}</span>
+                </div>
+            `;
+            totalDisplay = `$${(currentPrice * item.quantity).toFixed(2)}`;
+        }
+        
         const itemElement = document.createElement("div")
         itemElement.className = "cart-item"
         itemElement.innerHTML = `
@@ -44,6 +65,7 @@ function renderCartItems() {
                             <h3 class="item-name">${item.name}</h3>
                             <p class="item-category">${item.category || 'No category'}</p>
                             <p class="item-size">Size: ${item.size || 'N/A'}</p>
+                            ${hasDiscount ? `<span class="discount-badge">-${Math.round(item.discount)}% OFF</span>` : ''}
                             <button class="remove-button" onclick="removeItem(${item.id}, '${item.size}')">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
@@ -65,8 +87,8 @@ function renderCartItems() {
                             </svg>
                         </button>
                     </div>
-                    <div class="item-price">$${item.price.toFixed(2)}</div>
-                    <div class="item-total">$${(item.price * item.quantity).toFixed(2)}</div>
+                    <div class="item-price ${hasDiscount ? 'has-discount' : ''}">${priceDisplay}</div>
+                    <div class="item-total">${totalDisplay}</div>
                 </div>
             `
         cartItemsContainer.appendChild(itemElement)
@@ -188,20 +210,24 @@ async function applyPromoCode(promoCode) {
 }
 
 function calculateSubtotal() {
-    return cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return cartItems.reduce((sum, item) => {
+        // item.price is already the discounted price from the backend
+        // No need to apply discount again
+        return sum + (item.price * item.quantity);
+    }, 0);
 }
 
 function calculateDiscountAmount(discountData) {
     console.log('Calculating discount for:', discountData);
     
-    const subtotal = calculateSubtotal();
+    const subtotal = calculateSubtotal(); // This now returns the correct subtotal
     const shippingCost = calculateShippingCost();
     const tax = subtotal * TAX_RATE;
     const totalBeforeDiscount = subtotal + tax + shippingCost;
     
     console.log('Total before discount:', totalBeforeDiscount);
     
-    // Check minimum purchase requirement (based on subtotal as per typical e-commerce)
+    // Check minimum purchase requirement
     if (discountData.min_purchase > 0 && subtotal < discountData.min_purchase) {
         console.log('Minimum purchase requirement not met');
         return 0;
@@ -210,11 +236,11 @@ function calculateDiscountAmount(discountData) {
     let discountAmount = 0;
     
     if (discountData.discount_type === 'percentage') {
-        // Percentage discounts apply to subtotal only (typical e-commerce practice)
+        // Percentage discounts apply to subtotal only
         discountAmount = subtotal * (discountData.value / 100);
         console.log('Percentage discount calculated on subtotal:', discountAmount);
     } else if (discountData.discount_type === 'fixed') {
-        // Fixed discounts apply to the total (including tax and shipping)
+        // Fixed discounts apply to the total
         discountAmount = Math.min(discountData.value, totalBeforeDiscount);
         console.log('Fixed discount amount applied to total:', discountAmount);
     }

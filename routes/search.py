@@ -59,7 +59,7 @@ def perform_search(search_query):
         print(f"Using wildcard: {search_wildcard}")
         
         cursor.execute("""
-            SELECT product_id, name, price, stock, type, img_file_path, size, description
+            SELECT product_id, name, price, original_price, stock, type, img_file_path, size, description, discount
             FROM products 
             WHERE name LIKE %s OR description LIKE %s
             ORDER BY product_id
@@ -84,10 +84,12 @@ def perform_search(search_query):
                 'product_id': product['product_id'],
                 'name': product['name'],
                 'price': product['price'],
+                'original_price': product['original_price'],
                 'type': product['type'],
                 'img_file_path': product['img_file_path'],
                 'description': product['description'],
-                'stock': product['stock']
+                'stock': product['stock'],
+                'discount': product['discount'] or 0  # Ensure discount is never None
             }
         
         unique_products_list = list(products_dict.values())

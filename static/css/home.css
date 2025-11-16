@@ -249,6 +249,7 @@ main {
     border-radius: 0.25rem;
     font-size: 0.875rem;
     font-weight: bold;
+    width: 100%;
 }
 
 .no-products {
@@ -273,6 +274,48 @@ main {
 
 .product-sizes:empty {
     display: none;
+}
+
+/* Add to style.css */
+.product-price-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    font-weight: bold;
+}
+
+.price-with-discount {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+}
+
+.product-price {
+    text-align: center;
+    width: 100%;
+}
+
+/* Ensure product card contents are centered */
+.product-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.product-name {
+    text-align: center;
+    width: 100%;
+}
+
+.btn-primary {
+    width: 100% !important;
 }
 
 /* Adjust card layout for the new content */
@@ -300,8 +343,51 @@ main {
     overflow: hidden;
 }
 
-.product-price {
-    font-weight: 600;
-    color: #1a1a1a;
-    margin-bottom: 0.25rem;
+/* Discount badge styling */
+.discount-badge {
+    background-color: #dc3545;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
 }
+
+
+.original-price {
+    text-decoration: line-through;
+    color: #dc3545;
+    font-size: 0.9rem;
+    opacity: 0.7;
+    text-align: center;
+}
+
+.discounted-price {
+    color: #2c5530;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.discount-percentage {
+    color: #dc3545;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+
+/* Container for product images */
+.product-image-container {
+    position: relative;
+    display: inline-block;
+}
+
+.search-product-card .product-image {
+    position: relative;
+}
+
+

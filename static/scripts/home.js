@@ -144,12 +144,27 @@ function createProductCard(product) {
     const card = document.createElement('div');
     card.className = 'product-card';
     
-    const formattedPrice = parseFloat(product.price).toFixed(2);
     const isOutOfStock = product.stock <= 0;
+    const hasDiscount = product.discount && product.discount > 0;
+    
+    // Use original_price if available, otherwise use current price
+    let priceDisplay = `$${parseFloat(product.price).toFixed(2)}`;
+    let discountBadge = '';
+    
+    if (hasDiscount && product.original_price) {
+        const originalPrice = parseFloat(product.original_price);
+        const currentPrice = parseFloat(product.price);
+        priceDisplay = `
+            <div class="price-with-discount">
+                <span class="original-price">$${originalPrice.toFixed(2)}</span>
+                <span class="discounted-price">$${currentPrice.toFixed(2)}</span>
+            </div>
+        `;
+        discountBadge = `<span class="discount-badge">-${Math.round(product.discount)}%</span>`;
+    }
     
     const stockStatus = isOutOfStock ? 
         '<span class="out-of-stock-tag">Out of Stock</span>' : 
-        // make this a link to the item page so the server loads item details
         `<a class="btn btn-sm btn-primary view-item" href="/item/${product.product_id}">View Item</a>`;
     
     let imagePath = product.img_file_path;
@@ -157,16 +172,23 @@ function createProductCard(product) {
         imagePath += '.png';
     }
     
-    const imageHtml = imagePath ? 
-        `<img src="${imagePath}" alt="${product.name}" onerror="this.style.display='none'">` :
-        '<div class="no-image-placeholder"></div>';
+    // Fixed: Properly generate image HTML
+    let imageHtml = '';
+    if (imagePath) {
+        imageHtml = `<img src="${imagePath}" alt="${product.name}" onerror="this.style.display='none'">`;
+    } else {
+        imageHtml = '<div class="no-image-placeholder"></div>';
+    }
     
     card.innerHTML = `
         <div class="product-image-container">
             ${imageHtml}
+            ${discountBadge}
         </div>
         <div class="product-name">${product.name}</div>
-        <div class="product-price">$${formattedPrice}</div>
+        <div class="product-price-container ${hasDiscount ? 'has-discount' : ''}">
+            ${priceDisplay}
+        </div>
         ${stockStatus}
     `;
     
@@ -253,6 +275,3 @@ function addScrollerNavigation(scroller) {
     // Also update on window resize
     window.addEventListener('resize', updateButtonVisibility);
 }
-
-// Remove the old search functionality that was here
-// The new search simply redirects to the search page

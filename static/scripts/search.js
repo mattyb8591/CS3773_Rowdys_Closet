@@ -106,6 +106,7 @@ function displaySearchResults(products, count, query) {
         const isOutOfStock = product.stock <= 0;
         const stockStatus = isOutOfStock ? 'Out of Stock' : `${product.stock} in stock`;
         const stockClass = isOutOfStock ? 'out-of-stock' : 'in-stock';
+        const hasDiscount = product.discount && product.discount > 0;
         
         // Handle image path
         let imageHtml = '';
@@ -114,10 +115,27 @@ function displaySearchResults(products, count, query) {
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">`;
         }
         
+        // Price display with discount
+        let priceDisplay = `$${parseFloat(product.price || 0).toFixed(2)}`;
+        let discountBadge = '';
+
+        if (hasDiscount && product.original_price) {
+            const originalPrice = parseFloat(product.original_price);
+            const currentPrice = parseFloat(product.price);
+            priceDisplay = `
+                <div class="price-with-discount">
+                    <span class="original-price">$${originalPrice.toFixed(2)}</span>
+                    <span class="discounted-price">$${currentPrice.toFixed(2)}</span>
+                </div>
+            `;
+            discountBadge = `<span class="discount-badge">-${Math.round(product.discount)}% OFF</span>`;
+        }
+                
         html += `
             <div class="search-product-card">
                 <div class="product-image">
                     ${imageHtml}
+                    ${discountBadge}
                     <div class="no-image-placeholder" ${product.img_file_path ? 'style="display:none;"' : ''}>
                         No Image
                     </div>
@@ -129,7 +147,9 @@ function displaySearchResults(products, count, query) {
                     <p class="product-description">${escapeHtml(product.description || 'No description available')}</p>
                     
                     <div class="product-meta">
-                        <div class="product-price">$${parseFloat(product.price || 0).toFixed(2)}</div>
+                        <div class="product-price ${hasDiscount ? 'has-discount' : ''}">
+                            ${priceDisplay}
+                        </div>
                         <div class="product-stock ${stockClass}">
                             ${stockStatus}
                         </div>
@@ -341,6 +361,63 @@ style.textContent = `
         display: inline-flex;
         align-items: center;
         justify-content: center;
+    }
+    
+    /* Discount badge styling for search results */
+    .discount-badge {
+        background-color: #dc3545;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 2;
+    }
+    
+    /* Price display for discounted items */
+    .price-with-discount {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .original-price {
+        text-decoration: line-through;
+        color: #dc3545;
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+    
+    .discounted-price {
+        color: #2c5530;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+    
+    .discount-percentage {
+        color: #dc3545;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    /* Regular price styling */
+    .product-price {
+        color: #2c5530;
+        font-size: 1.1rem;
+        font-weight: bold;
+    }
+    
+    /* Container for product images */
+    .product-image-container {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .search-product-card .product-image {
+        position: relative;
     }
 `;
 document.head.appendChild(style);

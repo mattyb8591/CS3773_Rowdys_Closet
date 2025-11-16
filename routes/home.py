@@ -17,7 +17,7 @@ def load_products():
     cursor = db.cursor(dictionary=True)
     
     cursor.execute("""
-        SELECT product_id, name, price, stock, type, img_file_path, size, description
+        SELECT product_id, name, price, original_price, stock, type, img_file_path, size, description, discount
         FROM products 
         ORDER BY product_id
     """)
@@ -41,10 +41,12 @@ def load_products():
             'product_id': product['product_id'],
             'name': product['name'],
             'price': product['price'],
+            'original_price': product['original_price'],
             'type': product['type'],
             'img_file_path': product['img_file_path'],
             'description': product['description'],
-            'stock': product['stock']
+            'stock': product['stock'],
+            'discount': product['discount'] or 0  # Ensure discount is never None
         }
     
     unique_products_list = list(products_dict.values())
@@ -158,10 +160,12 @@ def result_search():
                 'product_id': product['product_id'],
                 'name': product['name'],
                 'price': product['price'],
+                'original_price': product['original_price'],
                 'type': product['type'],
                 'img_file_path': product['img_file_path'],
                 'description': product['description'],
-                'stock': product['stock']
+                'stock': product['stock'],
+                'discount': product['discount'] or 0  # Ensure discount is never None
             }
 
         unique_products_list = list(products.values())

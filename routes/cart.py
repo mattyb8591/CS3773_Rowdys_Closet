@@ -47,28 +47,35 @@ def index():
             cart_id = cart_id_data['cart_id']
             print(f"Cart ID: {cart_id}")  # Debug log
             
-            # Updated query to include size from products table
+            # Updated query to include size, discount, and original_price from products table
             query = """ 
             SELECT 
                 products.product_id as id, 
                 products.name as name, 
                 products.img_file_path as image, 
-                products.price as price, 
-                products.size as size,  -- Get size from products table
+                products.price as price,  -- This should be the discounted price
+                products.original_price as original_price,
+                products.size as size,
                 products.type as category,
+                products.discount as discount,
                 COUNT(products.product_id) AS quantity
             FROM cart_products 
             INNER JOIN products ON cart_products.product_id = products.product_id 
             WHERE cart_products.cart_id = %s
-            GROUP BY products.product_id, products.size  -- Group by both product_id and size
+            GROUP BY products.product_id, products.size
             """
             cursor.execute(query,(cart_id,))
             user_cart_items = cursor.fetchall()
             
             # Convert NULL sizes to "One Size" for display
+            # Ensure discount is never None
             for item in user_cart_items:
                 if item['size'] is None:
                     item['size'] = "One Size"
+                if item['discount'] is None:
+                    item['discount'] = 0
+                if item['original_price'] is None:
+                    item['original_price'] = item['price']  # If no original_price, use current price
             
             print(f"Processed cart items with sizes: {user_cart_items}")  # Debug log
         
@@ -306,12 +313,16 @@ def checkout():
         current_cart_id = current_cart['cart_id']
         
         # Get all cart items with their quantities and sizes
+        # FIX: Use only the current price (already discounted) for calculations
         cursor.execute("""
             SELECT 
                 p.product_id,
                 p.size,
                 COUNT(*) as quantity,
-                p.stock as current_stock
+                p.stock as current_stock,
+                p.price as price,  -- This is the discounted price
+                p.original_price as original_price,  -- For reference only
+                p.discount as discount  -- For reference only, not for calculation
             FROM cart_products cp
             INNER JOIN products p ON cp.product_id = p.product_id 
             WHERE cp.cart_id = %s
@@ -339,16 +350,13 @@ def checkout():
                 (quantity, product_id)
             )
         
-        # Calculate subtotal from cart items
-        cursor.execute("""
-            SELECT SUM(products.price) as subtotal
-            FROM cart_products 
-            INNER JOIN products ON cart_products.product_id = products.product_id 
-            WHERE cart_products.cart_id = %s
-        """, (current_cart_id,))
-        
-        total_result = cursor.fetchone()
-        subtotal = total_result['subtotal'] if total_result and total_result['subtotal'] else Decimal('0.00')
+        # FIX: Calculate subtotal using ONLY the current price (already discounted)
+        # Do NOT apply the discount percentage again
+        subtotal = Decimal('0.00')
+        for item in cart_items:
+            price = Decimal(str(item['price']))  # This is already the discounted price
+            quantity = item['quantity']
+            subtotal += price * quantity
         
         # Convert to float for calculations to avoid Decimal/float mixing
         subtotal_float = float(subtotal)
@@ -364,11 +372,11 @@ def checkout():
         elif shipping_method == "express":
             shipping_cost = 15.0
         
-        # Calculate total before discount (subtotal + tax + shipping)
-        total_before_discount = subtotal_float + tax_amount + shipping_cost
+        # Calculate total before promo code discount (subtotal + tax + shipping)
+        total_before_promo_discount = subtotal_float + tax_amount + shipping_cost
         
-        # Apply discount if provided
-        final_total = total_before_discount
+        # Apply promo code discount if provided (separate from product discounts)
+        final_total = total_before_promo_discount
         applied_discount_code = None
         discount_amount = 0.0
         
@@ -390,11 +398,13 @@ def checkout():
                     applied_discount_code = discount_code
                     
                     if discount['discount_type'] == 'percentage':
+                        # Apply percentage discount to subtotal only
                         discount_amount = subtotal_float * (discount_value / 100)
                     else:
-                        discount_amount = min(discount_value, total_before_discount)
+                        # Fixed amount discount applies to total
+                        discount_amount = min(discount_value, total_before_promo_discount)
                     
-                    final_total = max(0, total_before_discount - discount_amount)
+                    final_total = max(0, total_before_promo_discount - discount_amount)
         
         # Create payment record
         cursor.execute(

@@ -11,6 +11,62 @@
         crossorigin="anonymous"
     >
     <link rel="stylesheet" href="../static/css/item.css">
+    <style>
+        .discount-badge {
+            background-color: #dc3545;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 2;
+        }
+        
+        .pricing {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        
+        .price-with-discount {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .original-price {
+            text-decoration: line-through;
+            color: #dc3545;
+            font-size: 1.1rem;
+            opacity: 0.7;
+        }
+        
+        .discounted-price {
+            color: #2c5530;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+        
+        .discount-percentage {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .price {
+            color: #2c5530;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+        
+        .product-image {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -32,6 +88,9 @@
         <form id="selectForm" method="post">
             <div class="product-image">
                 <img src="{{item.img_file_path}}" alt="Premium UTSA Hoodie">
+                {% if item.discount and item.discount > 0 %}
+                <span class="discount-badge">-{{ item.discount | round | int }}% OFF</span>
+                {% endif %}
             </div>
 
             <div class="product-details">
@@ -39,8 +98,19 @@
                     <h2>{{ item.name }}</h2>
                 </div>
 
-                <div class="pricing">
-                    <span class="price">${{ '%.2f'|format(item.price) }}</span>
+               <div class="pricing">
+                    {% if item.discount and item.discount > 0 and item.original_price %}
+                        {% set discount_percentage = item.discount | round | int %}
+                        {% set original_price = item.original_price | float %}
+                        {% set current_price = item.price | float %}
+                        <div class="price-with-discount">
+                            <span class="original-price">${{ '%.2f'|format(original_price) }}</span>
+                            <span class="discounted-price">${{ '%.2f'|format(current_price) }}</span>
+                        </div>
+                        <span class="discount-percentage">Save {{ discount_percentage }}%</span>
+                    {% else %}
+                        <span class="price">${{ '%.2f'|format(item.price) }}</span>
+                    {% endif %}
                 </div>
 
                 <div class="description">
